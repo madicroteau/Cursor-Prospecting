@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AccountDossierView } from "@/components/dossier/AccountDossierView";
 import { DossierBackLink } from "@/components/dossier/DossierSection";
 import { SiteHeader } from "@/components/SiteHeader";
+import { researchAccount } from "@/lib/live-research";
 import { getMockDossier } from "@/lib/mock-data";
 
 interface DossierPageProps {
@@ -17,7 +18,17 @@ export default async function DossierPage({ searchParams }: DossierPageProps) {
   const companyWebsite =
     params.website?.trim() || "https://www.adventhealth.com";
 
-  const dossier = getMockDossier(companyName, companyWebsite);
+  const [dossier, liveResearch] = await Promise.all([
+    Promise.resolve(getMockDossier(companyName, companyWebsite)),
+    researchAccount(companyName, companyWebsite),
+  ]);
+
+  const statusLabel =
+    liveResearch.status === "live"
+      ? "Live research connected"
+      : liveResearch.status === "missing_key"
+        ? "Add Tavily key for live research"
+        : "Live research error · mock still available";
 
   return (
     <div className="relative min-h-screen">
@@ -63,14 +74,20 @@ export default async function DossierPage({ searchParams }: DossierPageProps) {
               </Link>
             </div>
 
-            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
-              Mock data · Experimental intel preview
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                liveResearch.status === "live"
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                  : "border-amber-500/30 bg-amber-500/10 text-amber-200"
+              }`}
+            >
+              {statusLabel}
             </span>
           </div>
         </header>
 
         <div className="py-8">
-          <AccountDossierView dossier={dossier} />
+          <AccountDossierView dossier={dossier} liveResearch={liveResearch} />
         </div>
       </main>
     </div>

@@ -1,4 +1,5 @@
 import type { AccountDossier } from "@/lib/mock-data";
+import type { LiveResearchResult } from "@/lib/live-research";
 import {
   BulletList,
   DossierSection,
@@ -10,9 +11,11 @@ import { RoiTcoSection } from "@/components/dossier/RoiTcoSection";
 import { ResearchGapsSection } from "@/components/dossier/ResearchGapsSection";
 import { WhyNowSynthesisSection } from "@/components/dossier/WhyNowSynthesisSection";
 import { ProspectingPlanSection } from "@/components/dossier/ProspectingPlanSection";
+import { LiveResearchSection } from "@/components/dossier/LiveResearchSection";
 
 interface AccountDossierViewProps {
   dossier: AccountDossier;
+  liveResearch: LiveResearchResult;
 }
 
 function formatGeneratedDate(isoDate: string) {
@@ -22,11 +25,24 @@ function formatGeneratedDate(isoDate: string) {
   }).format(new Date(isoDate));
 }
 
-export function AccountDossierView({ dossier }: AccountDossierViewProps) {
+export function AccountDossierView({
+  dossier,
+  liveResearch,
+}: AccountDossierViewProps) {
   const { snapshot, experimental } = dossier;
+  const liveSources = liveResearch.items.map((item) => ({
+    title: `[Live] ${item.title}`,
+    url: item.url,
+  }));
+  const allSources = [...liveSources, ...dossier.sources].filter(
+    (source, index, list) =>
+      list.findIndex((item) => item.url === source.url) === index,
+  );
 
   return (
     <div className="space-y-6">
+      <LiveResearchSection research={liveResearch} />
+
       {/* Snapshot metrics */}
       <DossierSection id="snapshot" title="Account Snapshot" icon="snapshot">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -141,7 +157,7 @@ export function AccountDossierView({ dossier }: AccountDossierViewProps) {
 
       <DossierSection id="sources" title="Sources" icon="sources">
         <ul className="divide-y divide-border">
-          {dossier.sources.map((source) => (
+          {allSources.map((source) => (
             <li key={source.url}>
               <a
                 href={source.url}
@@ -169,8 +185,9 @@ export function AccountDossierView({ dossier }: AccountDossierViewProps) {
           ))}
         </ul>
         <p className="mt-4 text-xs text-text-muted">
-          Generated {formatGeneratedDate(dossier.generatedAt)} · Mock data for
-          UI preview · Experimental sections included
+          Generated {formatGeneratedDate(dossier.generatedAt)} · Live research{" "}
+          {liveResearch.status === "live" ? "connected" : "pending API key"} ·
+          Experimental sections may still include SAMPLE content
         </p>
       </DossierSection>
     </div>

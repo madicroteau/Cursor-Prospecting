@@ -11,13 +11,30 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the app.
+Open the URL printed by `npm run dev` (usually [http://localhost:3000](http://localhost:3000)).
+
+If port 3000 is already taken (common in Cursor), the app will start on [http://localhost:3001](http://localhost:3001) instead.
+
+## Enable live web research (Step 5)
+
+1. Create a free API key at [tavily.com](https://tavily.com)
+2. Copy `.env.example` to `.env.local`
+3. Paste your key:
+
+```bash
+TAVILY_API_KEY=your_tavily_api_key_here
+```
+
+4. Restart `npm run dev`
+5. Research AdventHealth and confirm the **Live Web Research** section shows real source links
+
+Without a key, the app still works using mock/sample dossier content and shows setup instructions.
 
 ## Status
 
-**Experimental stream** — mock/sample data only, no new external APIs.
+**Step 5 — Live web research wired (Tavily)**
 
-Existing Phase 1 dossier flow still works. This branch adds experimental sections:
+Also includes experimental dossier sections:
 
 - Job Intelligence
 - Buying Committee Map
@@ -26,7 +43,7 @@ Existing Phase 1 dossier flow still works. This branch adds experimental section
 - Why Now Synthesis
 - Expanded Prospecting Plan
 
-All experimental content is labeled SAMPLE / MOCK until live research is connected.
+Experimental analysis sections may still include SAMPLE / MOCK content until later AI analysis steps.
 
 ## Repository
 

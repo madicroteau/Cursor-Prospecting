@@ -80,7 +80,7 @@ export function BuildDossierForm() {
           type="submit"
           className="mt-8 w-full rounded-lg bg-accent px-4 py-3.5 text-sm font-semibold tracking-wide text-white transition-all hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent-glow focus:ring-offset-2 focus:ring-offset-surface-card active:scale-[0.99]"
         >
-          BUILD DOSSIER
+          RESEARCH ACCOUNT
         </button>
       </form>
 
