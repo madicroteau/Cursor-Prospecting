@@ -15,7 +15,18 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 
 ## Status
 
-**Phase 1 — UI preview** (mock data only, no external APIs)
+**Experimental stream** — mock/sample data only, no new external APIs.
+
+Existing Phase 1 dossier flow still works. This branch adds experimental sections:
+
+- Job Intelligence
+- Buying Committee Map
+- ROI / TCO Opportunity Model
+- What We Still Need to Know
+- Why Now Synthesis
+- Expanded Prospecting Plan
+
+All experimental content is labeled SAMPLE / MOCK until live research is connected.
 
 ## Repository
 

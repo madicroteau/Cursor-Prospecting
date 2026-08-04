@@ -3,6 +3,11 @@
  * Replace with live research results in later phases.
  */
 
+import {
+  getExperimentalIntelligence,
+  type ExperimentalIntelligence,
+} from "@/lib/experimental-intelligence";
+
 export interface MockAccountInput {
   companyName: string;
   companyWebsite: string;
@@ -39,6 +44,8 @@ export interface AccountDossier {
   whyNow: string[];
   talkTrack: string[];
   sources: DossierSource[];
+  /** Experimental enterprise intelligence extensions (SAMPLE / MOCK). */
+  experimental: ExperimentalIntelligence;
 }
 
 export const MOCK_ACCOUNT_EXAMPLES: MockAccountInput[] = [
@@ -54,7 +61,7 @@ export const MOCK_ACCOUNT_EXAMPLES: MockAccountInput[] = [
 
 const ADVENTHEALTH_DOSSIER: Omit<
   AccountDossier,
-  "companyName" | "companyWebsite" | "generatedAt"
+  "companyName" | "companyWebsite" | "generatedAt" | "experimental"
 > = {
   snapshot: {
     industry: "Nonprofit health system",
@@ -140,7 +147,7 @@ const ADVENTHEALTH_DOSSIER: Omit<
 function buildGenericDossier(
   companyName: string,
   companyWebsite: string,
-): Omit<AccountDossier, "generatedAt"> {
+): Omit<AccountDossier, "generatedAt" | "experimental"> {
   const domain = companyWebsite.replace(/^https?:\/\/(www\.)?/, "").split("/")[0];
 
   return {
@@ -224,5 +231,9 @@ export function getMockDossier(
   return {
     ...base,
     generatedAt: new Date().toISOString(),
+    experimental: getExperimentalIntelligence(
+      base.companyName,
+      base.companyWebsite,
+    ),
   };
 }

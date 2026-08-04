@@ -64,7 +64,7 @@ export default async function DossierPage({ searchParams }: DossierPageProps) {
             </div>
 
             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
-              Mock data · Phase 1 preview
+              Mock data · Experimental intel preview
             </span>
           </div>
         </header>

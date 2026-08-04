@@ -27,7 +27,7 @@ export function SiteHeader() {
         </Link>
 
         <span className="hidden rounded-full border border-border bg-surface-elevated px-3 py-1 text-xs font-medium text-text-muted sm:inline-block">
-          Phase 1 · UI Preview
+          Experimental stream · Mock data
         </span>
       </div>
     </header>

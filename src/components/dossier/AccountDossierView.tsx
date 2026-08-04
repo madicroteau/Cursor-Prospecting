@@ -4,6 +4,12 @@ import {
   DossierSection,
 } from "@/components/dossier/DossierSection";
 import { ProspectCard } from "@/components/dossier/ProspectCard";
+import { JobIntelligenceSection } from "@/components/dossier/JobIntelligenceSection";
+import { BuyingCommitteeSection } from "@/components/dossier/BuyingCommitteeSection";
+import { RoiTcoSection } from "@/components/dossier/RoiTcoSection";
+import { ResearchGapsSection } from "@/components/dossier/ResearchGapsSection";
+import { WhyNowSynthesisSection } from "@/components/dossier/WhyNowSynthesisSection";
+import { ProspectingPlanSection } from "@/components/dossier/ProspectingPlanSection";
 
 interface AccountDossierViewProps {
   dossier: AccountDossier;
@@ -17,7 +23,7 @@ function formatGeneratedDate(isoDate: string) {
 }
 
 export function AccountDossierView({ dossier }: AccountDossierViewProps) {
-  const { snapshot } = dossier;
+  const { snapshot, experimental } = dossier;
 
   return (
     <div className="space-y-6">
@@ -55,6 +61,8 @@ export function AccountDossierView({ dossier }: AccountDossierViewProps) {
         </DossierSection>
       </div>
 
+      <JobIntelligenceSection data={experimental.jobIntelligence} />
+
       <DossierSection
         id="prospects"
         title="Who to Prospect"
@@ -67,6 +75,8 @@ export function AccountDossierView({ dossier }: AccountDossierViewProps) {
           ))}
         </div>
       </DossierSection>
+
+      <BuyingCommitteeSection data={experimental.buyingCommittee} />
 
       <DossierSection
         id="signals"
@@ -105,6 +115,14 @@ export function AccountDossierView({ dossier }: AccountDossierViewProps) {
           <BulletList items={dossier.whyNow} />
         </DossierSection>
       </div>
+
+      <WhyNowSynthesisSection signals={experimental.whyNowSynthesis} />
+
+      <RoiTcoSection assumptions={experimental.roiAssumptions} />
+
+      <ResearchGapsSection gaps={experimental.researchGaps} />
+
+      <ProspectingPlanSection plan={experimental.prospectingPlan} />
 
       <DossierSection id="talk-track" title="Suggested Talk Track" icon="talk">
         <ol className="space-y-4">
@@ -152,7 +170,7 @@ export function AccountDossierView({ dossier }: AccountDossierViewProps) {
         </ul>
         <p className="mt-4 text-xs text-text-muted">
           Generated {formatGeneratedDate(dossier.generatedAt)} · Mock data for
-          UI preview
+          UI preview · Experimental sections included
         </p>
       </DossierSection>
     </div>
