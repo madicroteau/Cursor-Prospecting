@@ -8,6 +8,11 @@ import type {
 } from "@/lib/experimental-intelligence";
 import { RESEARCH_CATEGORY_LABELS } from "@/lib/organize-research";
 import {
+  buildComplianceSecurityIntelligence,
+  mergeWhyNowSignals,
+  regulatoryTriggersToWhyNowSignals,
+} from "@/lib/compliance-security";
+import {
   formatDisplayList,
   formatDisplayText,
   formatHeadline,
@@ -1051,47 +1056,68 @@ export function localAnalyzeAccountResearch(
     ],
   };
 
-  const whyNowSynthesis: ExperimentalIntelligence["whyNowSynthesis"] = [
-    ...initiativeItems.slice(0, 2).map((item) => ({
-      trigger: item.title,
-      date: item.publishedDate || "Recent (from live research)",
-      evidence: item.snippet || item.title,
-      source: item.title,
-      sourceUrl: item.url,
-      relevantPersona: "CIO / digital leadership",
-      whyItMatters: "Public initiative activity can create timing for outreach.",
-      cursorRelevance:
-        "May indicate growing software/digital delivery demand — validate with the customer.",
-      discoveryQuestion: `Which parts of "${item.title}" are creating the most delivery pressure?`,
-      confidence: "Medium" as const,
-      claimType: "FACT" as const,
-      combinedSignals: [RESEARCH_CATEGORY_LABELS.initiatives],
-    })),
-    ...(hiringItems[0] && techItems[0]
-      ? [
-          {
-            trigger: "Hiring + technology/AI signals appearing together",
-            date: "Recent (from live research)",
-            evidence: `${sourceLine(hiringItems[0])} + ${sourceLine(techItems[0])}`,
-            source: "Combined live research",
-            sourceUrl: hiringItems[0].url,
-            relevantPersona: "VP Engineering / Platform",
-            whyItMatters:
-              "Combined signals can create a stronger sales hypothesis than either alone.",
-            cursorRelevance:
-              "Possible reason to discuss developer productivity and AI-assisted delivery.",
-            discoveryQuestion:
-              "Are new initiatives increasing engineering throughput requirements?",
-            confidence: "Low" as const,
-            claimType: "SALES_HYPOTHESIS" as const,
-            combinedSignals: [
-              RESEARCH_CATEGORY_LABELS.hiring,
-              RESEARCH_CATEGORY_LABELS.technology,
-            ],
-          },
-        ]
-      : []),
-  ].slice(0, 4);
+  const researchText = combinedText(liveResearch.items);
+  const snapshotPreview = buildAccountSnapshot(
+    company,
+    liveResearch.items,
+    initiativeItems[0]?.title || techItems[0]?.title || company,
+  );
+  const complianceSecurity = buildComplianceSecurityIntelligence({
+    companyName: company,
+    companyWebsite: liveResearch.companyWebsite,
+    industry: snapshotPreview.industry,
+    headquarters: snapshotPreview.headquarters,
+    researchText,
+    isSample: false,
+  });
+
+  const whyNowSynthesis: ExperimentalIntelligence["whyNowSynthesis"] =
+    mergeWhyNowSignals(
+      [
+        ...initiativeItems.slice(0, 2).map((item) => ({
+          trigger: item.title,
+          date: item.publishedDate || "Recent (from live research)",
+          evidence: item.snippet || item.title,
+          source: item.title,
+          sourceUrl: item.url,
+          relevantPersona: "CIO / digital leadership",
+          whyItMatters:
+            "Public initiative activity can create timing for outreach.",
+          cursorRelevance:
+            "May indicate growing software/digital delivery demand — validate with the customer.",
+          discoveryQuestion: `Which parts of "${item.title}" are creating the most delivery pressure?`,
+          confidence: "Medium" as const,
+          claimType: "FACT" as const,
+          combinedSignals: [RESEARCH_CATEGORY_LABELS.initiatives],
+        })),
+        ...(hiringItems[0] && techItems[0]
+          ? [
+              {
+                trigger: "Hiring + technology/AI signals appearing together",
+                date: "Recent (from live research)",
+                evidence: `${sourceLine(hiringItems[0])} + ${sourceLine(techItems[0])}`,
+                source: "Combined live research",
+                sourceUrl: hiringItems[0].url,
+                relevantPersona: "VP Engineering / Platform",
+                whyItMatters:
+                  "Combined signals can create a stronger sales hypothesis than either alone.",
+                cursorRelevance:
+                  "Possible reason to discuss developer productivity and AI-assisted delivery.",
+                discoveryQuestion:
+                  "Are new initiatives increasing engineering throughput requirements?",
+                confidence: "Low" as const,
+                claimType: "SALES_HYPOTHESIS" as const,
+                combinedSignals: [
+                  RESEARCH_CATEGORY_LABELS.hiring,
+                  RESEARCH_CATEGORY_LABELS.technology,
+                ],
+              },
+            ]
+          : []),
+        ...regulatoryTriggersToWhyNowSignals(complianceSecurity.whyNowTriggers),
+      ],
+      6,
+    );
 
   const researchGaps: ExperimentalIntelligence["researchGaps"] = [
     {
@@ -1369,6 +1395,53 @@ Best,
           whyThem: formatDisplayText(target.whyThem, formatOpts),
           talkAbout: formatDisplayText(target.talkAbout, formatOpts),
           relatedSignal: formatHeadline(target.relatedSignal, formatOpts),
+        })),
+      },
+      complianceSecurity: {
+        ...complianceSecurity,
+        disclaimer: formatDisplayText(complianceSecurity.disclaimer, formatOpts),
+        accountContextSummary: formatDisplayText(
+          complianceSecurity.accountContextSummary,
+          formatOpts,
+        ),
+        discoveryQuestions: formatDisplayList(
+          complianceSecurity.discoveryQuestions,
+          { ...formatOpts, ensurePunctuation: false },
+        ),
+        accountImpact: complianceSecurity.accountImpact.map((item) => ({
+          ...item,
+          requirement: formatHeadline(item.requirement, formatOpts),
+          accountImplication: formatDisplayText(
+            item.accountImplication,
+            formatOpts,
+          ),
+          potentialCursorConversation: formatDisplayText(
+            item.potentialCursorConversation,
+            formatOpts,
+          ),
+          targetPersona: formatJobTitle(item.targetPersona, formatOpts),
+          discoveryQuestion: formatDisplayText(item.discoveryQuestion, {
+            ...formatOpts,
+            ensurePunctuation: false,
+          }),
+        })),
+        whyNowTriggers: complianceSecurity.whyNowTriggers.map((item) => ({
+          ...item,
+          trigger: formatHeadline(item.trigger, formatOpts),
+          accountRelevance: formatDisplayText(item.accountRelevance, formatOpts),
+          securityTechImplication: formatDisplayText(
+            item.securityTechImplication,
+            formatOpts,
+          ),
+          potentialCursorRelevance: formatDisplayText(
+            item.potentialCursorRelevance,
+            formatOpts,
+          ),
+          targetPersona: formatJobTitle(item.targetPersona, formatOpts),
+          discoveryQuestion: formatDisplayText(item.discoveryQuestion, {
+            ...formatOpts,
+            ensurePunctuation: false,
+          }),
         })),
       },
     },

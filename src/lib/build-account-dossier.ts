@@ -103,6 +103,9 @@ function mergeDossier(
         experimentalPatch.researchGaps || base.experimental.researchGaps,
       prospectingPlan:
         experimentalPatch.prospectingPlan || base.experimental.prospectingPlan,
+      complianceSecurity:
+        experimentalPatch.complianceSecurity ||
+        base.experimental.complianceSecurity,
       roiAssumptions: {
         ...base.experimental.roiAssumptions,
         notes: [

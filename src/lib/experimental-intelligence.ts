@@ -10,6 +10,12 @@ import type {
   Confidence,
   RelationshipStatus,
 } from "@/lib/claim-types";
+import {
+  buildSampleComplianceSecurity,
+  mergeWhyNowSignals,
+  regulatoryTriggersToWhyNowSignals,
+  type ComplianceSecurityIntelligence,
+} from "@/lib/compliance-security";
 
 export interface JobCategoryCount {
   category: string;
@@ -160,9 +166,14 @@ export interface ExperimentalIntelligence {
   researchGaps: ResearchGap[];
   whyNowSynthesis: WhyNowSignal[];
   prospectingPlan: ProspectingPlanExpanded;
+  complianceSecurity: ComplianceSecurityIntelligence;
 }
 
 function adventHealthExperimental(): ExperimentalIntelligence {
+  const complianceSecurity = buildSampleComplianceSecurity(
+    "AdventHealth",
+    "https://www.adventhealth.com",
+  );
   return {
     jobIntelligence: {
       isSample: true,
@@ -503,7 +514,7 @@ function adventHealthExperimental(): ExperimentalIntelligence {
           "How do you currently measure engineering productivity or delivery health?",
       },
     ],
-    whyNowSynthesis: [
+    whyNowSynthesis: mergeWhyNowSignals([
       {
         trigger: "Digital / ambulatory expansion pressure",
         date: "Recent (sample)",
@@ -580,7 +591,9 @@ function adventHealthExperimental(): ExperimentalIntelligence {
         claimType: "INFERENCE",
         combinedSignals: ["Security / Governance", "AI programs"],
       },
-    ],
+      ...regulatoryTriggersToWhyNowSignals(complianceSecurity.whyNowTriggers),
+    ]),
+    complianceSecurity,
     prospectingPlan: {
       isSample: true,
       whoToTarget: [
@@ -655,6 +668,7 @@ function genericExperimental(
   const site = companyWebsite.startsWith("http")
     ? companyWebsite
     : `https://${companyWebsite}`;
+  const complianceSecurity = buildSampleComplianceSecurity(companyName, site);
 
   return {
     jobIntelligence: {
@@ -813,7 +827,7 @@ function genericExperimental(
         discoveryQuestion: "Who owns evaluation and budget for developer tools?",
       },
     ],
-    whyNowSynthesis: [
+    whyNowSynthesis: mergeWhyNowSignals([
       {
         trigger: "Live Why Now synthesis pending research",
         date: "N/A",
@@ -827,7 +841,9 @@ function genericExperimental(
         confidence: "Low",
         claimType: "INFERENCE",
       },
-    ],
+      ...regulatoryTriggersToWhyNowSignals(complianceSecurity.whyNowTriggers),
+    ]),
+    complianceSecurity,
     prospectingPlan: {
       isSample: true,
       whoToTarget: [

@@ -40,6 +40,13 @@ export function WhyNowSynthesisSection({
             <div className="flex flex-wrap items-center gap-2">
               <ClaimBadge type={signal.claimType} />
               <ConfidenceBadge level={signal.confidence} />
+              {signal.combinedSignals?.some((item) =>
+                /regulatory|compliance/i.test(item),
+              ) ? (
+                <span className="inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
+                  Regulatory / Compliance
+                </span>
+              ) : null}
             </div>
             <h3 className="font-medium text-white">
               {formatHeadline(signal.trigger, { companyName })}

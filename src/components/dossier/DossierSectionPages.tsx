@@ -18,6 +18,7 @@ import {
   OrganizedResearchSummary,
 } from "@/components/dossier/OrganizedResearchSection";
 import { ProspectingBriefSection } from "@/components/dossier/ProspectingBriefSection";
+import { ComplianceSecuritySection } from "@/components/dossier/ComplianceSecuritySection";
 import { formatDisplayText, formatHeadline } from "@/lib/text-format";
 
 function formatGeneratedDate(isoDate: string) {
@@ -197,6 +198,14 @@ export function DossierSectionPage({
             companyName={companyName}
           />
         </div>
+      );
+
+    case "compliance-security":
+      return (
+        <ComplianceSecuritySection
+          data={experimental.complianceSecurity}
+          companyName={companyName}
+        />
       );
 
     case "buying-committee":

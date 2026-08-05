@@ -3,6 +3,7 @@ export const DOSSIER_SECTIONS = [
   { id: "why-now", label: "Why Now" },
   { id: "buying-committee", label: "Buying Committee" },
   { id: "job-intelligence", label: "Job Intelligence" },
+  { id: "compliance-security", label: "Compliance & Security" },
   { id: "initiatives", label: "Initiatives" },
   { id: "technology", label: "Technology" },
   { id: "financials", label: "Financials" },
