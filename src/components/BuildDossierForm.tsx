@@ -3,29 +3,49 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+function normalizeWebsiteInput(website: string) {
+  const trimmed = website.trim();
+  if (!trimmed) return "";
+  const withProtocol = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+  try {
+    const url = new URL(withProtocol);
+    url.hash = "";
+    const path = url.pathname === "/" ? "" : url.pathname.replace(/\/$/, "");
+    return `${url.origin}${path}${url.search}`;
+  } catch {
+    return withProtocol.replace(/\/$/, "");
+  }
+}
+
 export function BuildDossierForm() {
   const router = useRouter();
   const [companyName, setCompanyName] = useState("");
   const [companyWebsite, setCompanyWebsite] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
     const name = companyName.trim();
+    const website = normalizeWebsiteInput(companyWebsite);
+
     if (!name) {
       setError("Enter a company name to build a dossier.");
       return;
     }
 
     const params = new URLSearchParams({ name });
-    const website = companyWebsite.trim();
     if (website) {
       params.set("website", website);
     }
 
-    router.push(`/dossier?${params.toString()}`);
+    const target = `/dossier/executive-brief?${params.toString()}`;
+    setIsSubmitting(true);
+    router.push(target);
   }
 
   return (
@@ -48,7 +68,8 @@ export function BuildDossierForm() {
               value={companyName}
               onChange={(event) => setCompanyName(event.target.value)}
               placeholder="e.g. AdventHealth"
-              className="w-full rounded-lg border border-border bg-surface-elevated px-4 py-3 text-sm text-white placeholder:text-text-muted transition-colors outline-none focus:border-border-focus focus:ring-2 focus:ring-accent-glow"
+              disabled={isSubmitting}
+              className="w-full rounded-lg border border-border bg-surface-elevated px-4 py-3 text-sm text-white placeholder:text-text-muted transition-colors outline-none focus:border-border-focus focus:ring-2 focus:ring-accent-glow disabled:opacity-60"
             />
           </div>
 
@@ -61,11 +82,13 @@ export function BuildDossierForm() {
             </label>
             <input
               id="company-website"
-              type="url"
+              type="text"
+              inputMode="url"
               value={companyWebsite}
               onChange={(event) => setCompanyWebsite(event.target.value)}
               placeholder="https://www.adventhealth.com"
-              className="w-full rounded-lg border border-border bg-surface-elevated px-4 py-3 text-sm text-white placeholder:text-text-muted transition-colors outline-none focus:border-border-focus focus:ring-2 focus:ring-accent-glow"
+              disabled={isSubmitting}
+              className="w-full rounded-lg border border-border bg-surface-elevated px-4 py-3 text-sm text-white placeholder:text-text-muted transition-colors outline-none focus:border-border-focus focus:ring-2 focus:ring-accent-glow disabled:opacity-60"
             />
           </div>
         </div>
@@ -76,16 +99,24 @@ export function BuildDossierForm() {
           </p>
         ) : null}
 
+        {isSubmitting ? (
+          <p className="mt-5 text-sm text-blue-300" role="status">
+            Researching account… first load can take a few seconds. This is not
+            a login screen.
+          </p>
+        ) : null}
+
         <button
           type="submit"
-          className="mt-8 w-full rounded-lg bg-accent px-4 py-3.5 text-sm font-semibold tracking-wide text-white transition-all hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent-glow focus:ring-offset-2 focus:ring-offset-surface-card active:scale-[0.99]"
+          disabled={isSubmitting}
+          className="mt-8 w-full rounded-lg bg-accent px-4 py-3.5 text-sm font-semibold tracking-wide text-white transition-all hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent-glow focus:ring-offset-2 focus:ring-offset-surface-card active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
         >
-          RESEARCH ACCOUNT
+          {isSubmitting ? "RESEARCHING…" : "RESEARCH ACCOUNT"}
         </button>
       </form>
 
       <p className="mt-6 text-center text-xs text-text-muted">
-        Research powered by public sources. No CRM connection required.
+        Research powered by public sources. No CRM connection or login required.
       </p>
     </div>
   );

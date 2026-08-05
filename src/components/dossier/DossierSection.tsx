@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { formatDisplayText } from "@/lib/text-format";
 
 const SECTION_ICONS: Record<string, ReactNode> = {
   snapshot: (
@@ -113,21 +114,30 @@ export function DossierSection({
   );
 }
 
-export function BulletList({ items }: { items: string[] }) {
+export function BulletList({
+  items,
+  companyName,
+}: {
+  items: string[];
+  companyName?: string;
+}) {
   return (
     <ul className="space-y-3">
-      {items.map((item) => (
-        <li
-          key={item}
-          className="flex gap-3 text-sm leading-relaxed text-text-secondary"
-        >
-          <span
-            aria-hidden="true"
-            className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400/80"
-          />
-          <span>{item}</span>
-        </li>
-      ))}
+      {items.map((item) => {
+        const formatted = formatDisplayText(item, { companyName });
+        return (
+          <li
+            key={item}
+            className="flex gap-3 text-sm leading-relaxed text-text-secondary"
+          >
+            <span
+              aria-hidden="true"
+              className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400/80"
+            />
+            <span>{formatted}</span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

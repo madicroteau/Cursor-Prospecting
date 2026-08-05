@@ -15,35 +15,31 @@ Open the URL printed by `npm run dev` (usually [http://localhost:3000](http://lo
 
 If port 3000 is already taken (common in Cursor), the app will start on [http://localhost:3001](http://localhost:3001) instead.
 
-## Enable live web research (Step 5)
+## Enable live web research
 
-1. Create a free API key at [tavily.com](https://tavily.com)
-2. Copy `.env.example` to `.env.local`
-3. Paste your key:
+Create `.env.local` from `.env.example` and add:
 
 ```bash
 TAVILY_API_KEY=your_tavily_api_key_here
 ```
 
-4. Restart `npm run dev`
-5. Research AdventHealth and confirm the **Live Web Research** section shows real source links
+Restart `npm run dev`, then research AdventHealth.
 
-Without a key, the app still works using mock/sample dossier content and shows setup instructions.
+**OpenAI is not required right now.**  
+The app builds dossier insights from organized live sources using local analysis.
 
 ## Status
 
-**Step 5 — Live web research wired (Tavily)**
+**Prospecting brief — MEDDPICC + Command of the Message (no OpenAI)**
 
-Also includes experimental dossier sections:
+Flow:
 
-- Job Intelligence
-- Buying Committee Map
-- ROI / TCO Opportunity Model
-- What We Still Need to Know
-- Why Now Synthesis
-- Expanded Prospecting Plan
+1. Run broader Tavily queries across leadership, hiring, AI, tech, initiatives, financial, news
+2. Organize and extract the highest-value signals (not every raw result)
+3. Present a clean Executive Brief: value thesis, sourced signals, Why Cursor/Why Now, discovery questions
+4. Each signal includes clickable sources plus MEDDPICC and Command of the Message lenses for selling Cursor
 
-Experimental analysis sections may still include SAMPLE / MOCK content until later AI analysis steps.
+OpenAI remains optional for later if you want richer AI writing.
 
 ## Repository
 

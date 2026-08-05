@@ -1,11 +1,18 @@
 import { ClaimBadge, ConfidenceBadge, SampleBadge } from "@/components/ClaimBadge";
 import { DossierSection } from "@/components/dossier/DossierSection";
 import type { WhyNowSignal } from "@/lib/experimental-intelligence";
+import {
+  formatDisplayText,
+  formatHeadline,
+  formatJobTitle,
+} from "@/lib/text-format";
 
 export function WhyNowSynthesisSection({
   signals,
+  companyName,
 }: {
   signals: WhyNowSignal[];
+  companyName?: string;
 }) {
   return (
     <DossierSection
@@ -22,28 +29,48 @@ export function WhyNowSynthesisSection({
       </div>
 
       <div className="space-y-4">
-        {signals.map((signal) => (
+        {signals.map((signal, index) => (
           <article
-            key={signal.trigger}
+            key={
+              signal.sourceUrl ||
+              `${signal.trigger}-${signal.date}-${index}`
+            }
             className="space-y-2 rounded-lg border border-border/80 bg-surface-elevated/50 p-4"
           >
             <div className="flex flex-wrap items-center gap-2">
               <ClaimBadge type={signal.claimType} />
               <ConfidenceBadge level={signal.confidence} />
             </div>
-            <h3 className="font-medium text-white">{signal.trigger}</h3>
+            <h3 className="font-medium text-white">
+              {formatHeadline(signal.trigger, { companyName })}
+            </h3>
             <Meta label="Date" value={signal.date} />
-            <Meta label="Evidence" value={signal.evidence} />
-            <Meta label="Source" value={signal.source} />
-            <Meta label="Relevant persona" value={signal.relevantPersona} />
-            <Meta label="Why it matters" value={signal.whyItMatters} />
+            <Meta
+              label="Evidence"
+              value={formatDisplayText(signal.evidence, { companyName })}
+            />
+            <Meta
+              label="Source"
+              value={formatHeadline(signal.source, { companyName })}
+            />
+            <Meta
+              label="Relevant persona"
+              value={formatJobTitle(signal.relevantPersona, { companyName })}
+            />
+            <Meta
+              label="Why it matters"
+              value={formatDisplayText(signal.whyItMatters, { companyName })}
+            />
             <Meta
               label="Potential Cursor relevance"
-              value={signal.cursorRelevance}
+              value={formatDisplayText(signal.cursorRelevance, { companyName })}
             />
             <Meta
               label="Discovery question"
-              value={signal.discoveryQuestion}
+              value={formatDisplayText(signal.discoveryQuestion, {
+                companyName,
+                ensurePunctuation: false,
+              })}
             />
             {signal.combinedSignals && signal.combinedSignals.length > 0 ? (
               <Meta

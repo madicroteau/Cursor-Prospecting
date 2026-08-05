@@ -1,11 +1,18 @@
 import { ClaimBadge, SampleBadge } from "@/components/ClaimBadge";
 import { DossierSection } from "@/components/dossier/DossierSection";
 import type { ProspectingPlanExpanded } from "@/lib/experimental-intelligence";
+import {
+  formatDisplayText,
+  formatHeadline,
+  formatJobTitle,
+} from "@/lib/text-format";
 
 export function ProspectingPlanSection({
   plan,
+  companyName,
 }: {
   plan: ProspectingPlanExpanded;
+  companyName?: string;
 }) {
   return (
     <DossierSection
@@ -32,10 +39,21 @@ export function ProspectingPlanSection({
                 key={target.persona}
                 className="rounded-lg border border-border/80 bg-surface-elevated/50 p-4"
               >
-                <p className="font-medium text-white">{target.persona}</p>
-                <Meta label="Why them" value={target.whyThem} />
-                <Meta label="What to talk about" value={target.talkAbout} />
-                <Meta label="Related signal" value={target.relatedSignal} />
+                <p className="font-medium text-white">
+                  {formatJobTitle(target.persona, { companyName })}
+                </p>
+                <Meta
+                  label="Why them"
+                  value={formatDisplayText(target.whyThem, { companyName })}
+                />
+                <Meta
+                  label="What to talk about"
+                  value={formatDisplayText(target.talkAbout, { companyName })}
+                />
+                <Meta
+                  label="Related signal"
+                  value={formatHeadline(target.relatedSignal, { companyName })}
+                />
               </li>
             ))}
           </ul>
@@ -52,7 +70,7 @@ export function ProspectingPlanSection({
                 className="flex flex-wrap items-start gap-2 rounded-lg border border-border/80 bg-surface-elevated/50 p-4 text-sm text-text-secondary"
               >
                 <ClaimBadge type="SALES_HYPOTHESIS" />
-                <span>{angle}</span>
+                <span>{formatDisplayText(angle, { companyName })}</span>
               </li>
             ))}
           </ol>
@@ -63,7 +81,7 @@ export function ProspectingPlanSection({
             Strongest Why Now reason
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-text-secondary">
-            {plan.strongestWhyNow}
+            {formatDisplayText(plan.strongestWhyNow, { companyName })}
           </p>
         </div>
 
@@ -77,7 +95,10 @@ export function ProspectingPlanSection({
                 key={item}
                 className="rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs text-violet-100/90"
               >
-                {item}
+                {formatDisplayText(item, {
+                  companyName,
+                  ensurePunctuation: false,
+                })}
               </li>
             ))}
           </ul>
@@ -89,7 +110,12 @@ export function ProspectingPlanSection({
           </h3>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-text-secondary">
             {plan.discoveryQuestions.map((question) => (
-              <li key={question}>{question}</li>
+              <li key={question}>
+                {formatDisplayText(question, {
+                  companyName,
+                  ensurePunctuation: false,
+                })}
+              </li>
             ))}
           </ol>
         </div>
@@ -98,14 +124,26 @@ export function ProspectingPlanSection({
           <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
             Outreach suggestions
           </h3>
-          <OutreachBlock title="Short email" body={plan.outreach.email} />
+          <OutreachBlock
+            title="Short email"
+            body={formatDisplayText(plan.outreach.email, {
+              companyName,
+              ensurePunctuation: false,
+            })}
+          />
           <OutreachBlock
             title="Cold call opener"
-            body={plan.outreach.coldCallOpener}
+            body={formatDisplayText(plan.outreach.coldCallOpener, {
+              companyName,
+              ensurePunctuation: false,
+            })}
           />
           <OutreachBlock
             title="LinkedIn message"
-            body={plan.outreach.linkedInMessage}
+            body={formatDisplayText(plan.outreach.linkedInMessage, {
+              companyName,
+              ensurePunctuation: false,
+            })}
           />
         </div>
       </div>

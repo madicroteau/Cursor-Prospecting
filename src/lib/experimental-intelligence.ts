@@ -21,6 +21,7 @@ export interface JobSignal {
   supportingJobPostings: string[];
   supportingJobCount: number;
   technologiesDetected: string[];
+  skillsAndTasks: string[];
   evidence: string;
   sourceUrls: string[];
   businessImplication: string;
@@ -29,11 +30,30 @@ export interface JobSignal {
   claimType: ClaimType;
 }
 
+export type CursorHiringAngleCategory =
+  | "Language"
+  | "Cloud"
+  | "EHR / Epic"
+  | "Platform / DevOps"
+  | "AI / ML"
+  | "Integration"
+  | "Delivery pressure";
+
+export interface CursorHiringAngle {
+  skillOrTech: string;
+  category: CursorHiringAngleCategory;
+  whyItHelpsSellCursor: string;
+  supportingJobs: string[];
+  sourceUrls: string[];
+}
+
 export interface JobIntelligence {
   isSample: boolean;
   totalRelevantOpenings: number;
   categories: JobCategoryCount[];
   technologiesDetected: string[];
+  /** Concrete hiring signals that help position Cursor in outreach. */
+  cursorSellingAngles: CursorHiringAngle[];
   signals: JobSignal[];
   summary: string;
 }
@@ -183,6 +203,7 @@ function adventHealthExperimental(): ExperimentalIntelligence {
           ],
           supportingJobCount: 8,
           technologiesDetected: ["Java", "JavaScript", "AWS", "CI/CD"],
+          skillsAndTasks: ["Application delivery", "Cloud", "Integration work"],
           evidence:
             "SAMPLE: Multiple public technology openings reference application delivery, cloud, and integration work.",
           sourceUrls: ["https://jobs.adventhealth.com"],
@@ -201,6 +222,7 @@ function adventHealthExperimental(): ExperimentalIntelligence {
           ],
           supportingJobCount: 4,
           technologiesDetected: ["Python", "Snowflake", "Generative AI"],
+          skillsAndTasks: ["Analytics", "Automation", "AI-adjacent build work"],
           evidence:
             "SAMPLE: Some postings mention analytics, automation, or AI-adjacent responsibilities.",
           sourceUrls: ["https://jobs.adventhealth.com"],
@@ -216,6 +238,7 @@ function adventHealthExperimental(): ExperimentalIntelligence {
           supportingJobPostings: ["Epic / Clinical Applications (sample)"],
           supportingJobCount: 1,
           technologiesDetected: ["Epic"],
+          skillsAndTasks: ["EHR ecosystem", "Clinical applications", "Integrations"],
           evidence:
             "SAMPLE: Healthcare application roles commonly appear in large health-system hiring.",
           sourceUrls: ["https://jobs.adventhealth.com"],
@@ -225,6 +248,40 @@ function adventHealthExperimental(): ExperimentalIntelligence {
             "Cursor relevance is strongest for custom/integration software around Epic — validate with the customer.",
           confidence: "Low",
           claimType: "SALES_HYPOTHESIS",
+        },
+      ],
+      cursorSellingAngles: [
+        {
+          skillOrTech: "Java / JavaScript delivery work",
+          category: "Language",
+          whyItHelpsSellCursor:
+            "Active language-stack hiring means engineers are writing and maintaining production code where Cursor can accelerate day-to-day development.",
+          supportingJobs: ["Software Engineer", "Application Developer"],
+          sourceUrls: ["https://jobs.adventhealth.com"],
+        },
+        {
+          skillOrTech: "AWS / cloud platform roles",
+          category: "Cloud",
+          whyItHelpsSellCursor:
+            "Cloud and platform work often involves repetitive infrastructure and service code — a strong Cursor use case for faster, higher-quality delivery.",
+          supportingJobs: ["Cloud Engineer"],
+          sourceUrls: ["https://jobs.adventhealth.com"],
+        },
+        {
+          skillOrTech: "Epic / healthcare application ecosystem",
+          category: "EHR / Epic",
+          whyItHelpsSellCursor:
+            "Epic-adjacent customization and integration work is usually complex and code-heavy — position Cursor for governed acceleration on those teams.",
+          supportingJobs: ["Epic / Clinical Applications (sample)"],
+          sourceUrls: ["https://jobs.adventhealth.com"],
+        },
+        {
+          skillOrTech: "Generative AI / analytics build work",
+          category: "AI / ML",
+          whyItHelpsSellCursor:
+            "If the account is already hiring for AI-adjacent work, ask whether engineering has an approved AI coding path — Cursor Teams fits that conversation.",
+          supportingJobs: ["Data Engineer", "Machine Learning / AI-related role (sample)"],
+          sourceUrls: ["https://jobs.adventhealth.com"],
         },
       ],
       summary:
@@ -616,12 +673,14 @@ function genericExperimental(
         { category: "Epic / Healthcare Applications", count: 0 },
       ],
       technologiesDetected: [],
+      cursorSellingAngles: [],
       signals: [
         {
           signal: `No live job research connected yet for ${companyName}`,
           supportingJobPostings: [],
           supportingJobCount: 0,
           technologiesDetected: [],
+          skillsAndTasks: [],
           evidence:
             "SAMPLE placeholder — connect career-page / public job research later.",
           sourceUrls: [site],

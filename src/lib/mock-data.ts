@@ -7,6 +7,10 @@ import {
   getExperimentalIntelligence,
   type ExperimentalIntelligence,
 } from "@/lib/experimental-intelligence";
+import {
+  emptyProspectingBrief,
+  type ProspectingBrief,
+} from "@/lib/prospecting-brief";
 
 export interface MockAccountInput {
   companyName: string;
@@ -44,6 +48,8 @@ export interface AccountDossier {
   whyNow: string[];
   talkTrack: string[];
   sources: DossierSource[];
+  /** Compact MEDDPICC + Command of the Message prospecting brief with sourced signals. */
+  prospectingBrief: ProspectingBrief;
   /** Experimental enterprise intelligence extensions (SAMPLE / MOCK). */
   experimental: ExperimentalIntelligence;
 }
@@ -58,6 +64,71 @@ export const MOCK_ACCOUNT_EXAMPLES: MockAccountInput[] = [
     companyWebsite: "https://www.mayoclinic.org",
   },
 ];
+
+const ADVENTHEALTH_BRIEF: ProspectingBrief = {
+  valueThesis:
+    "AdventHealth shows public digital and technology activity that can create pressure to deliver software faster. Use MEDDPICC to find pain and the Economic Buyer, and use Command of the Message to sell Cursor as the governed way for engineering teams to increase delivery capacity.",
+  prioritySignals: [
+    {
+      headline:
+        "Digital transformation and ambulatory expansion create software delivery demand",
+      insight:
+        "Public initiative activity can create delivery pressure — open with software velocity and whether engineering capacity is keeping up.",
+      meddpicc: "Identify Pain",
+      command: "Buyer Pain",
+      persona: "CIO / digital leadership",
+      claimType: "INFERENCE",
+      sources: [
+        {
+          title: "AdventHealth — About Us",
+          url: "https://www.adventhealth.com/about-us",
+        },
+      ],
+    },
+    {
+      headline: "Sustained engineering and data hiring suggests active build work",
+      insight:
+        "Hiring supports Metrics and Identify Pain — ask how new roles and projects affect developer throughput and onboarding.",
+      meddpicc: "Metrics",
+      command: "Value Driver",
+      persona: "VP Engineering / platform leader",
+      claimType: "INFERENCE",
+      sources: [
+        {
+          title: "AdventHealth Careers — Technology",
+          url: "https://jobs.adventhealth.com",
+        },
+      ],
+    },
+  ],
+  whyCursorNow: [
+    {
+      headline: "Governed AI coding path for healthcare engineering teams",
+      insight:
+        "Command Differentiator + MEDDPICC Decision Criteria: position Cursor Teams as the approved alternative to unmanaged consumer AI coding tools.",
+      meddpicc: "Decision Criteria",
+      command: "Differentiator",
+      persona: "Security / governance + CIO",
+      claimType: "SALES_HYPOTHESIS",
+      sources: [
+        {
+          title: "AdventHealth Careers — Technology",
+          url: "https://jobs.adventhealth.com",
+        },
+      ],
+    },
+  ],
+  discoveryQuestions: [
+    "Where is AdventHealth feeling the most pressure to deliver software or digital products faster this year?",
+    "Who owns budget and approval for developer productivity or AI coding tools?",
+    "Which teams would champion a governed pilot — platform, digital, or application engineering?",
+  ],
+    nextActions: [
+    "Confirm MEDDPICC Economic Buyer and Champion before outreach.",
+    "Lead with one public initiative or hiring signal, then ask a Metrics / Identify Pain discovery question.",
+    "Propose a 30-day governed Cursor pilot using a Command of the Message value driver: faster delivery with enterprise controls.",
+  ],
+};
 
 const ADVENTHEALTH_DOSSIER: Omit<
   AccountDossier,
@@ -142,6 +213,7 @@ const ADVENTHEALTH_DOSSIER: Omit<
       url: "https://www.adventhealth.com/leadership",
     },
   ],
+  prospectingBrief: ADVENTHEALTH_BRIEF,
 };
 
 function buildGenericDossier(
@@ -204,6 +276,7 @@ function buildGenericDossier(
         url: companyWebsite.startsWith("http") ? companyWebsite : `https://${domain}`,
       },
     ],
+    prospectingBrief: emptyProspectingBrief(companyName),
   };
 }
 

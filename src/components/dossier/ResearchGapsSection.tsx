@@ -1,8 +1,19 @@
 import { SampleBadge } from "@/components/ClaimBadge";
 import { DossierSection } from "@/components/dossier/DossierSection";
 import type { ResearchGap } from "@/lib/experimental-intelligence";
+import {
+  formatDisplayText,
+  formatHeadline,
+  formatJobTitle,
+} from "@/lib/text-format";
 
-export function ResearchGapsSection({ gaps }: { gaps: ResearchGap[] }) {
+export function ResearchGapsSection({
+  gaps,
+  companyName,
+}: {
+  gaps: ResearchGap[];
+  companyName?: string;
+}) {
   return (
     <DossierSection
       id="research-gaps"
@@ -23,13 +34,27 @@ export function ResearchGapsSection({ gaps }: { gaps: ResearchGap[] }) {
             key={gap.whatWeDontKnow}
             className="space-y-2 rounded-lg border border-border/80 bg-surface-elevated/50 p-4"
           >
-            <h3 className="font-medium text-white">{gap.whatWeDontKnow}</h3>
-            <Meta label="Current evidence" value={gap.currentEvidence} />
-            <Meta label="Why it matters" value={gap.whyItMatters} />
-            <Meta label="Who to ask" value={gap.whoToAsk} />
+            <h3 className="font-medium text-white">
+              {formatHeadline(gap.whatWeDontKnow, { companyName })}
+            </h3>
+            <Meta
+              label="Current evidence"
+              value={formatDisplayText(gap.currentEvidence, { companyName })}
+            />
+            <Meta
+              label="Why it matters"
+              value={formatDisplayText(gap.whyItMatters, { companyName })}
+            />
+            <Meta
+              label="Who to ask"
+              value={formatJobTitle(gap.whoToAsk, { companyName })}
+            />
             <Meta
               label="Suggested discovery question"
-              value={gap.discoveryQuestion}
+              value={formatDisplayText(gap.discoveryQuestion, {
+                companyName,
+                ensurePunctuation: false,
+              })}
             />
           </article>
         ))}

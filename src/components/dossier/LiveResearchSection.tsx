@@ -1,32 +1,21 @@
 import { SampleBadge } from "@/components/ClaimBadge";
 import { DossierSection } from "@/components/dossier/DossierSection";
-import type {
-  LiveResearchBucket,
-  LiveResearchResult,
-} from "@/lib/live-research";
-
-const BUCKET_LABELS: Record<LiveResearchBucket, string> = {
-  overview: "Overview",
-  technology: "Technology / AI",
-  leadership: "Leadership",
-  hiring: "Hiring",
-  news: "Recent news",
-};
-
-const BUCKET_ORDER: LiveResearchBucket[] = [
-  "overview",
-  "technology",
-  "leadership",
-  "hiring",
-  "news",
-];
+import type { LiveResearchResult } from "@/lib/live-research";
+import {
+  RESEARCH_CATEGORIES,
+  RESEARCH_CATEGORY_LABELS,
+} from "@/lib/organize-research";
+import { formatDisplayText, formatHeadline } from "@/lib/text-format";
 
 export function LiveResearchSection({
   research,
+  companyName,
 }: {
   research: LiveResearchResult;
+  companyName?: string;
 }) {
   const isLive = research.status === "live";
+  const name = companyName || research.companyName;
 
   return (
     <DossierSection
@@ -43,7 +32,12 @@ export function LiveResearchSection({
         ) : (
           <SampleBadge label="LIVE RESEARCH NOT ACTIVE" />
         )}
-        <span className="text-xs text-text-muted">{research.message}</span>
+        <span className="text-xs text-text-muted">
+          {formatDisplayText(research.message, {
+            companyName: name,
+            ensurePunctuation: false,
+          })}
+        </span>
       </div>
 
       {research.status === "missing_key" ? (
@@ -92,19 +86,19 @@ export function LiveResearchSection({
       ) : null}
 
       {isLive
-        ? BUCKET_ORDER.map((bucket) => {
-            const items = research.items.filter((item) => item.bucket === bucket);
+        ? RESEARCH_CATEGORIES.map((category) => {
+            const items = research.organized[category];
             if (items.length === 0) return null;
 
             return (
-              <div key={bucket} className="mt-5">
+              <div key={category} className="mt-5">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  {BUCKET_LABELS[bucket]}
+                  {RESEARCH_CATEGORY_LABELS[category]}
                 </h3>
                 <ul className="mt-3 space-y-3">
                   {items.map((item) => (
                     <li
-                      key={`${bucket}-${item.url}`}
+                      key={`${category}-${item.url}`}
                       className="rounded-lg border border-border/80 bg-surface-elevated/50 p-4"
                     >
                       <a
@@ -113,7 +107,7 @@ export function LiveResearchSection({
                         rel="noopener noreferrer"
                         className="font-medium text-blue-400 hover:text-blue-300"
                       >
-                        {item.title}
+                        {formatHeadline(item.title, { companyName: name })}
                       </a>
                       {item.publishedDate ? (
                         <p className="mt-1 text-xs text-text-muted">
@@ -121,7 +115,7 @@ export function LiveResearchSection({
                         </p>
                       ) : null}
                       <p className="mt-2 text-sm leading-relaxed text-text-secondary">
-                        {item.snippet}
+                        {formatDisplayText(item.snippet, { companyName: name })}
                       </p>
                       <p className="mt-2 break-all text-xs text-text-muted">
                         {item.url}
