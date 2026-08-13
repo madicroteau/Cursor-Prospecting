@@ -27,7 +27,7 @@ export function SiteHeader() {
         </Link>
 
         <span className="hidden rounded-full border border-border bg-surface-elevated px-3 py-1 text-xs font-medium text-text-muted sm:inline-block">
-          Prospecting brief · MEDDPICC + Command
+          Interview demo · AdventHealth
         </span>
       </div>
     </header>

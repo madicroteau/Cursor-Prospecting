@@ -1,5 +1,9 @@
-import { ClaimBadge, ConfidenceBadge, SampleBadge } from "@/components/ClaimBadge";
+import { ClaimBadge, ConfidenceBadge } from "@/components/ClaimBadge";
 import { DossierSection } from "@/components/dossier/DossierSection";
+import {
+  SourceLink,
+  UnavailableState,
+} from "@/components/dossier/UnavailableState";
 import type { WhyNowSignal } from "@/lib/experimental-intelligence";
 import {
   formatDisplayText,
@@ -17,85 +21,72 @@ export function WhyNowSynthesisSection({
   return (
     <DossierSection
       id="why-now-synthesis"
-      title="Why Now Synthesis"
+      title="Why Now"
       icon="cursor"
       accent="violet"
     >
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <SampleBadge />
-        <span className="text-xs text-text-muted">
-          Strongest current prospecting signals, including combined evidence
-        </span>
-      </div>
+      <p className="mb-4 text-sm text-text-secondary">
+        Strongest evidence-supported triggers synthesized from hiring,
+        technology, initiatives, leadership, and news. Generic sales reasons
+        are omitted.
+      </p>
 
-      <div className="space-y-4">
-        {signals.map((signal, index) => (
-          <article
-            key={
-              signal.sourceUrl ||
-              `${signal.trigger}-${signal.date}-${index}`
-            }
-            className="space-y-2 rounded-lg border border-border/80 bg-surface-elevated/50 p-4"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <ClaimBadge type={signal.claimType} />
-              <ConfidenceBadge level={signal.confidence} />
-              {signal.combinedSignals?.some((item) =>
-                /regulatory|compliance/i.test(item),
-              ) ? (
-                <span className="inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
-                  Regulatory / Compliance
-                </span>
-              ) : null}
-            </div>
-            <h3 className="font-medium text-white">
-              {formatHeadline(signal.trigger, { companyName })}
-            </h3>
-            <Meta label="Date" value={signal.date} />
-            <Meta
-              label="Evidence"
-              value={formatDisplayText(signal.evidence, { companyName })}
-            />
-            <Meta
-              label="Source"
-              value={formatHeadline(signal.source, { companyName })}
-            />
-            <Meta
-              label="Relevant persona"
-              value={formatJobTitle(signal.relevantPersona, { companyName })}
-            />
-            <Meta
-              label="Why it matters"
-              value={formatDisplayText(signal.whyItMatters, { companyName })}
-            />
-            <Meta
-              label="Potential Cursor relevance"
-              value={formatDisplayText(signal.cursorRelevance, { companyName })}
-            />
-            <Meta
-              label="Discovery question"
-              value={formatDisplayText(signal.discoveryQuestion, {
-                companyName,
-                ensurePunctuation: false,
-              })}
-            />
-            {signal.combinedSignals && signal.combinedSignals.length > 0 ? (
-              <Meta
-                label="Combined evidence"
-                value={signal.combinedSignals.join(" + ")}
-              />
-            ) : null}
-            <a
-              href={signal.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block break-all text-xs text-blue-400 hover:text-blue-300"
+      {signals.length === 0 ? (
+        <UnavailableState
+          title="No Why Now triggers yet"
+          message="This page synthesizes other dossier pages. It stays empty until live research produces evidence-backed timing signals."
+        />
+      ) : (
+        <div className="space-y-4">
+          {signals.map((signal, index) => (
+            <article
+              key={
+                signal.sourceUrl ||
+                `${signal.trigger}-${signal.date}-${index}`
+              }
+              className="space-y-2 rounded-lg border border-border/80 bg-surface-elevated/50 p-4"
             >
-              {signal.sourceUrl}
-            </a>
-          </article>
-        ))}
-      </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-text-muted">#{index + 1}</span>
+                <ClaimBadge type={signal.claimType} />
+                <ConfidenceBadge level={signal.confidence} />
+              </div>
+              <h3 className="font-medium text-white">
+                {formatHeadline(signal.trigger, { companyName })}
+              </h3>
+              <Meta
+                label="Evidence"
+                value={formatDisplayText(signal.evidence, { companyName })}
+              />
+              <Meta
+                label="Why it matters"
+                value={formatDisplayText(signal.whyItMatters, { companyName })}
+              />
+              <Meta
+                label="Relevant persona"
+                value={formatJobTitle(signal.relevantPersona, { companyName })}
+              />
+              <Meta
+                label="Potential Cursor conversation"
+                value={formatDisplayText(signal.cursorRelevance, {
+                  companyName,
+                })}
+              />
+              <Meta
+                label="Discovery question"
+                value={formatDisplayText(signal.discoveryQuestion, {
+                  companyName,
+                  ensurePunctuation: false,
+                })}
+              />
+              <SourceLink
+                href={signal.sourceUrl}
+                label={formatHeadline(signal.source, { companyName })}
+              />
+            </article>
+          ))}
+        </div>
+      )}
     </DossierSection>
   );
 }

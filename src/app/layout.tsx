@@ -10,7 +10,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Account Intel",
   description:
-    "Turn public account signals into actionable enterprise sales intelligence.",
+    "What do I need to know before prospecting into this account? Public signals into actionable enterprise sales intelligence.",
 };
 
 export default function RootLayout({

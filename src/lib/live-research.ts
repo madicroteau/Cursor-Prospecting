@@ -106,240 +106,107 @@ function companyDomainList(host: string) {
  * Separate research passes — specialized queries per category.
  * Prefer first-party / authoritative domains when helpful.
  */
+/**
+ * Lean multi-pass set (speed-focused). Prefer basic depth + timeouts over
+ * many advanced calls that previously hung dossier loads for 3+ minutes.
+ */
 const RESEARCH_PASSES: ResearchPass[] = [
-  // —— Overview / profile ——
   {
     pass: "overview-profile",
     bucket: "overview",
     buildQuery: (c) => `${c} health system about overview nonprofit headquarters`,
-    maxResults: 6,
-    searchDepth: "advanced",
-    includeDomains: (host) => companyDomainList(host),
-    chunksPerSource: 3,
-  },
-  {
-    pass: "overview-scale",
-    bucket: "overview",
-    buildQuery: (c) =>
-      `${c} number of hospitals employees caregivers states locations`,
     maxResults: 5,
     searchDepth: "basic",
-  },
-
-  // —— 1. Leadership ——
-  {
-    pass: "leadership-pages",
-    bucket: "leadership",
-    buildQuery: (c) =>
-      `${c} leadership team CIO CTO CISO "chief digital" "chief information" executive`,
-    maxResults: 8,
-    searchDepth: "advanced",
-    includeDomains: (host) => companyDomainList(host),
-    chunksPerSource: 3,
   },
   {
     pass: "leadership-c-suite",
     bucket: "leadership",
     buildQuery: (c) =>
-      `${c} CIO OR CTO OR CISO OR "Chief Digital Officer" OR "Chief AI Officer" OR "Chief Data Officer" appointed OR named`,
-    maxResults: 8,
-    searchDepth: "advanced",
-    chunksPerSource: 3,
+      `${c} CIO OR CTO OR CISO OR "Chief Digital Officer" OR "Chief AI Officer" appointed OR named`,
+    maxResults: 6,
+    searchDepth: "basic",
   },
   {
     pass: "leadership-engineering",
     bucket: "leadership",
     buildQuery: (c) =>
-      `"${c}" ("VP Engineering" OR "Vice President Engineering" OR "VP Application Development" OR "VP Software" OR "VP Platform" OR "VP DevOps" OR "Enterprise Architecture")`,
-    maxResults: 6,
-    searchDepth: "advanced",
-  },
-  {
-    pass: "leadership-interviews",
-    bucket: "leadership",
-    buildQuery: (c) =>
-      `${c} CIO OR CTO interview OR biography OR conference OR "technology leadership" OR "digital leadership"`,
-    maxResults: 6,
+      `"${c}" ("VP Engineering" OR "VP Software" OR "VP Platform" OR "VP DevOps" OR "Enterprise Architecture")`,
+    maxResults: 5,
     searchDepth: "basic",
-  },
-
-  // —— 2. Job intelligence ——
-  {
-    pass: "hiring-first-party",
-    bucket: "hiring",
-    buildQuery: (c, _w, host) =>
-      `site:${host} (careers OR jobs) ("software engineer" OR "software developer" OR "platform engineer" OR DevOps OR "cloud engineer")`,
-    maxResults: 8,
-    searchDepth: "advanced",
-    chunksPerSource: 3,
   },
   {
     pass: "hiring-engineers",
     bucket: "hiring",
     buildQuery: (c) =>
-      `${c} ("software engineer" OR "application developer" OR "platform engineer" OR DevOps OR "cloud architect") jobs OR careers`,
-    maxResults: 8,
-    searchDepth: "advanced",
+      `${c} ("software engineer" OR "platform engineer" OR DevOps OR "cloud architect") jobs OR careers`,
+    maxResults: 6,
+    searchDepth: "basic",
   },
   {
     pass: "hiring-ai-data",
     bucket: "hiring",
     buildQuery: (c) =>
-      `${c} ("data engineer" OR "AI engineer" OR "machine learning" OR "generative AI" OR "Epic developer" OR "integration engineer" OR "security engineer") job OR careers`,
-    maxResults: 8,
-    searchDepth: "advanced",
-  },
-  {
-    pass: "hiring-indeed",
-    bucket: "hiring",
-    buildQuery: (c) =>
-      `${c} software engineer OR devops OR "data engineer" site:indeed.com`,
+      `${c} ("data engineer" OR "AI engineer" OR "generative AI" OR "Epic developer" OR "security engineer") job OR careers`,
     maxResults: 6,
     searchDepth: "basic",
-    includeDomains: () => ["indeed.com"],
   },
-  {
-    pass: "hiring-workday",
-    bucket: "hiring",
-    buildQuery: (c) =>
-      `${c} ("software engineer" OR "platform engineer" OR DevOps OR "data engineer") (job OR jobs OR career)`,
-    maxResults: 6,
-    searchDepth: "basic",
-    includeDomains: () => [
-      "myworkdayjobs.com",
-      "workday.com",
-      "greenhouse.io",
-      "lever.co",
-      "icims.com",
-    ],
-  },
-
-  // —— 3. Technology ——
   {
     pass: "technology-stack",
     bucket: "technology",
     buildQuery: (c) =>
-      `${c} (Epic OR AWS OR Azure OR GCP OR Kubernetes OR Docker OR Terraform OR GitHub OR GitLab OR "VS Code" OR ".NET" OR Python OR Java OR TypeScript) technology OR engineering`,
-    maxResults: 8,
-    searchDepth: "advanced",
-    chunksPerSource: 3,
+      `${c} (Epic OR AWS OR Azure OR Kubernetes OR GitHub OR Python OR Java OR TypeScript OR ".NET") technology`,
+    maxResults: 6,
+    searchDepth: "basic",
   },
   {
     pass: "technology-ai-tools",
     bucket: "ai",
     buildQuery: (c) =>
-      `${c} (Copilot OR Claude OR "generative AI" OR LLM OR "AI coding" OR "developer experience" OR Databricks OR Snowflake) technology OR partnership`,
-    maxResults: 7,
-    searchDepth: "advanced",
-  },
-  {
-    pass: "technology-ehr-cloud",
-    bucket: "technology",
-    buildQuery: (c) =>
-      `${c} Epic EHR OR "electronic health record" OR "cloud migration" OR "Azure DevOps" OR CI/CD platform`,
-    maxResults: 6,
+      `${c} (Copilot OR Claude OR "generative AI" OR LLM OR Databricks OR Snowflake) technology OR partnership`,
+    maxResults: 5,
     searchDepth: "basic",
-  },
-
-  // —— 4. Strategic initiatives ——
-  {
-    pass: "initiatives-first-party",
-    bucket: "initiatives",
-    buildQuery: (c) =>
-      `${c} ("strategic plan" OR "digital transformation" OR "AI strategy" OR modernization OR "smart hospital" OR "digital health")`,
-    maxResults: 7,
-    searchDepth: "advanced",
-    includeDomains: (host) => companyDomainList(host),
-    chunksPerSource: 3,
   },
   {
     pass: "initiatives-expansion",
     bucket: "initiatives",
     buildQuery: (c) =>
-      `${c} (expansion OR acquisition OR partnership OR "new facility" OR "cloud migration" OR "application modernization" OR "developer productivity")`,
-    maxResults: 7,
-    searchDepth: "advanced",
+      `${c} ("digital transformation" OR "AI strategy" OR modernization OR expansion OR partnership)`,
+    maxResults: 6,
+    searchDepth: "basic",
     timeRange: "year",
   },
-  {
-    pass: "initiatives-cyber-data",
-    bucket: "initiatives",
-    buildQuery: (c) =>
-      `${c} (cybersecurity OR "data modernization" OR automation OR "patient experience" OR "Epic modernization") initiative OR strategy`,
-    maxResults: 5,
-    searchDepth: "basic",
-  },
-
-  // —— 5. Financial / public docs ——
   {
     pass: "financial-filings",
     bucket: "financial",
     buildQuery: (c) =>
-      `${c} ("Form 990" OR "annual report" OR "audited financial" OR "bond offering" OR "bond disclosure" OR "capital plan")`,
-    maxResults: 7,
-    searchDepth: "advanced",
-    chunksPerSource: 3,
+      `${c} ("Form 990" OR "annual report" OR "bond offering" OR "capital plan" OR "operating margin")`,
+    maxResults: 5,
+    searchDepth: "basic",
   },
-  {
-    pass: "financial-operations",
-    bucket: "financial",
-    buildQuery: (c) =>
-      `${c} ("operating margin" OR "capital spending" OR "technology investment" OR productivity OR "cost pressure" OR "board meeting") financial OR budget`,
-    maxResults: 6,
-    searchDepth: "advanced",
-  },
-
-  // —— 6. Regulatory / compliance ——
   {
     pass: "compliance-authoritative",
     bucket: "compliance",
     buildQuery: (c) =>
-      `healthcare HIPAA "Security Rule" OR OCR OR CMS OR "cybersecurity performance goals" OR SSDF OR NIST guidance ${c}`,
-    maxResults: 6,
-    searchDepth: "advanced",
-    includeDomains: () => REGULATORY_DOMAINS,
-    chunksPerSource: 3,
-  },
-  {
-    pass: "compliance-florida",
-    bucket: "compliance",
-    buildQuery: (c) =>
-      `${c} Florida (HIPAA OR privacy OR "breach notification" OR AHCA OR cybersecurity) healthcare regulation`,
+      `healthcare HIPAA "Security Rule" OR OCR OR CMS OR NIST OR CISA ${c}`,
     maxResults: 5,
     searchDepth: "basic",
-    includeDomains: () => [
-      ...REGULATORY_DOMAINS,
-      "modernhealthcare.com",
-      "healthcareitnews.com",
-    ],
-  },
-  {
-    pass: "compliance-ai-security",
-    bucket: "compliance",
-    buildQuery: () =>
-      `HHS OCR HIPAA enforcement OR "secure software development" OR "third-party risk" healthcare AI governance guidance`,
-    maxResults: 5,
-    searchDepth: "advanced",
     includeDomains: () => REGULATORY_DOMAINS,
-    timeRange: "year",
   },
-
-  // —— 7. Recent news / triggers ——
   {
     pass: "news-triggers",
     bucket: "news",
     buildQuery: (c) =>
-      `${c} (CIO OR CISO OR acquisition OR partnership OR "generative AI" OR cybersecurity OR expansion OR "digital transformation")`,
+      `${c} (CIO OR CISO OR acquisition OR partnership OR "generative AI" OR cybersecurity OR expansion)`,
     topic: "news",
-    maxResults: 8,
-    searchDepth: "advanced",
+    maxResults: 6,
+    searchDepth: "basic",
     timeRange: "year",
   },
   {
     pass: "news-first-party",
     bucket: "news",
     buildQuery: (c) => `${c} newsroom OR "press release" AI OR technology OR leadership`,
-    maxResults: 6,
+    maxResults: 5,
     searchDepth: "basic",
     includeDomains: (host) => companyDomainList(host),
     timeRange: "year",
@@ -377,8 +244,8 @@ function normalizeWebsite(website: string, companyName: string) {
 function cacheKey(companyName: string, companyWebsite: string) {
   const name = companyName.trim().toLowerCase();
   const website = normalizeWebsite(companyWebsite, companyName).toLowerCase();
-  // v3: multi-pass specialized research orchestration
-  return `v3|${name}|${website}`;
+  // v5: lean multi-pass + request timeouts (speed)
+  return `v5|${name}|${website}`;
 }
 
 function dedupeResults(items: LiveResearchItem[]) {
@@ -465,7 +332,7 @@ async function enrichWithExtracts(
         sourcePriorityScore(b.url, companyHost),
     )
     .filter((item) => isHighValueUrl(item.url, companyHost))
-    .slice(0, 10)
+    .slice(0, 5)
     .map((item) => item.url);
 
   if (candidates.length === 0) return items;
@@ -542,7 +409,7 @@ async function researchAccountFresh(
     };
   };
 
-  const WAVE_SIZE = 6;
+  const WAVE_SIZE = 8;
   const settled: PromiseSettledResult<Awaited<ReturnType<typeof runPass>>>[] =
     [];
   for (let i = 0; i < RESEARCH_PASSES.length; i += WAVE_SIZE) {
@@ -580,13 +447,17 @@ async function researchAccountFresh(
   const organized = organizeResearch(items);
 
   if (items.length === 0) {
+    const usageLimited = errors.some((error) =>
+      /usage limit|exceeds your plan/i.test(error),
+    );
     return {
       status: "error",
       companyName: name,
       companyWebsite: website,
       searchedAt,
-      message:
-        "Live research ran, but no usable public sources were returned. Check the API key and try again.",
+      message: usageLimited
+        ? "Tavily plan usage limit reached — web research is paused until the quota resets or the plan is upgraded. Apollo leadership can still load."
+        : "Live research ran, but no usable public sources were returned. Check the API key and try again.",
       items: [],
       organized: emptyOrganized(),
       errors,

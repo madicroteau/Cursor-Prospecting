@@ -2,44 +2,67 @@
 
 AI-powered enterprise account research for sales teams.
 
-Turn public account signals into actionable enterprise sales intelligence.
+The application answers one question:
 
-## Getting started
+**What do I need to know before prospecting into this account?**
+
+It turns public information into actionable account intelligence for a Cursor sales conversation. AdventHealth is the primary demo account.
+
+## How to run
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the URL printed by `npm run dev` (usually [http://localhost:3000](http://localhost:3000)).
+Open the URL printed by `npm run dev`:
 
-If port 3000 is already taken (common in Cursor), the app will start on [http://localhost:3001](http://localhost:3001) instead.
+- [http://localhost:3000](http://localhost:3000) in most cases
+- [http://localhost:3001](http://localhost:3001) if port 3000 is already taken
 
-## Enable live web research
+The home form is pre-filled with AdventHealth. Click **Research Account**.
 
-Create `.env.local` from `.env.example` and add:
+## Enable live research
+
+Create `.env.local` from `.env.example`:
 
 ```bash
 TAVILY_API_KEY=your_tavily_api_key_here
 ```
 
-Restart `npm run dev`, then research AdventHealth.
+Optional — named buying-committee leaders:
 
-**OpenAI is not required right now.**  
-The app builds dossier insights from organized live sources using local analysis.
+```bash
+APOLLO_API_KEY=your_apollo_api_key_here
+```
 
-## Status
+Restart `npm run dev` after adding keys.
 
-**Prospecting brief — MEDDPICC + Command of the Message (no OpenAI)**
+OpenAI is not required. Insights are built from organized public sources using local analysis.
 
-Flow:
+## Recommended AdventHealth click-through
 
-1. Run broader Tavily queries across leadership, hiring, AI, tech, initiatives, financial, news
-2. Organize and extract the highest-value signals (not every raw result)
-3. Present a clean Executive Brief: value thesis, sourced signals, Why Cursor/Why Now, discovery questions
-4. Each signal includes clickable sources plus MEDDPICC and Command of the Message lenses for selling Cursor
+1. **Overview** — fastest way to understand the account: brief, Why Now, initiatives, technology, people, and the first sales angle.
+2. **Buying Committee** — publicly identifiable technology leaders, with buying roles labeled as inferred.
+3. **Technology** — Cursor-relevant stack signals with evidence, source, and confidence. Mentions are facts; environment conclusions are inferences.
+4. **Job Intelligence** — technical hiring analyzed for sales signals: top technologies, hiring themes, then FACT / INFERENCE / SALES HYPOTHESIS.
+5. **Initiatives** — public strategic themes with technology implications. Cursor relevance only when the evidence supports it.
+6. **Why Now** — strongest evidence-backed timing triggers synthesized from the other pages.
+7. **Prospecting Plan** — who to contact first, why, conversation angles, discovery questions, and remaining gaps.
+8. **Sources** — clickable evidence library grouped by company, people, jobs, technology, initiatives, news, financial/public, and regulatory.
 
-OpenAI remains optional for later if you want richer AI writing.
+## What may not populate
+
+The app does **not** invent people, titles, technologies, jobs, or initiatives.
+
+| Source | What it fills | If unavailable |
+| --- | --- | --- |
+| Tavily (`TAVILY_API_KEY`) | Web research for all pages | Pages stay empty and say live research is unavailable |
+| Apollo (`APOLLO_API_KEY`) | Named technology leaders on Buying Committee | People page shows unfilled roles instead of invented names |
+| Careers / job boards via Tavily | Job Intelligence counts and extracted jobs | Job page stays empty rather than fabricating openings |
+| First-party leadership pages | Named executives | Role shown as “no publicly identifiable person found” |
+
+Financial figures, org charts, reporting relationships, and “this person is buying Cursor” claims are never invented.
 
 ## Repository
 

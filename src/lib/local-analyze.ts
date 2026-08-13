@@ -1,4 +1,5 @@
 import type { AiAnalysisResult } from "@/lib/ai-analyze";
+import type { ApolloLeadershipResult } from "@/lib/apollo";
 import type { BuyingCommitteeRole } from "@/lib/claim-types";
 import type { LiveResearchItem, LiveResearchResult } from "@/lib/live-research";
 import type {
@@ -6,6 +7,18 @@ import type {
   CursorHiringAngleCategory,
   ExperimentalIntelligence,
 } from "@/lib/experimental-intelligence";
+import {
+  addFinding,
+  buildEvidenceLibrary,
+  buildHiringThemes,
+  buildJobSalesSignals,
+  buildOverview,
+  buildStrategicInitiatives,
+  buildTechnologySignals,
+  buildTopJobTechnologies,
+  extractRelevantJobs,
+  rankWhyNowSignals,
+} from "@/lib/account-signals";
 import { RESEARCH_CATEGORY_LABELS } from "@/lib/organize-research";
 import {
   buildComplianceSecurityIntelligence,
@@ -20,6 +33,10 @@ import {
   formatPersonName,
 } from "@/lib/text-format";
 import { buildProspectingBrief } from "@/lib/prospecting-brief";
+
+export type LocalAnalyzeOptions = {
+  apolloLeadership?: ApolloLeadershipResult;
+};
 
 function topItems(items: LiveResearchItem[], count = 3) {
   return items.slice(0, count);
@@ -296,7 +313,46 @@ type ExtractedLeader = {
   evidence: string;
   sourceUrl: string;
   sourceTitle: string;
+  sourceKind?: "apollo" | "web";
 };
+
+function apolloLeadersToExtracted(
+  apollo?: ApolloLeadershipResult,
+): ExtractedLeader[] {
+  if (!apollo || apollo.status !== "live" || apollo.people.length === 0) {
+    return [];
+  }
+
+  return apollo.people.map((person) => ({
+    name: person.name,
+    title: person.title,
+    evidence: `Apollo people search for ${apollo.companyDomain}: ${person.name}, ${person.title}${
+      person.organizationName ? ` at ${person.organizationName}` : ""
+    }. Confirm current role before outreach.`,
+    sourceUrl:
+      person.linkedinUrl ||
+      `https://www.apollo.io/people?q=${encodeURIComponent(person.name)}`,
+    sourceTitle: `Apollo · ${person.title}`,
+    sourceKind: "apollo" as const,
+  }));
+}
+
+function mergeExtractedLeaders(
+  apolloLeaders: ExtractedLeader[],
+  webLeaders: ExtractedLeader[],
+) {
+  const seenNames = new Set<string>();
+  const merged: ExtractedLeader[] = [];
+
+  for (const leader of [...apolloLeaders, ...webLeaders]) {
+    const key = leader.name.toLowerCase().replace(/\s+/g, " ").trim();
+    if (!key || seenNames.has(key)) continue;
+    seenNames.add(key);
+    merged.push(leader);
+  }
+
+  return merged;
+}
 
 /** Words that must never appear in a person-name capture. */
 const NAME_STOPWORDS = new Set([
@@ -467,8 +523,18 @@ function inferBuyingRole(
   ) {
     return "TECHNICAL CHAMPION";
   }
+  if (
+    /chief (?:ai|data|analytics|nursing|medical|people|human)|chief data officer|chief ai officer/.test(
+      t,
+    )
+  ) {
+    return "INFLUENCER";
+  }
   if (/chief|president/.test(t)) {
     return "EXECUTIVE SPONSOR";
+  }
+  if (/director|head of/.test(t)) {
+    return "INFLUENCER";
   }
   return "TECHNICAL CHAMPION";
 }
@@ -916,31 +982,47 @@ function buildAccountSnapshot(
   };
 }
 
-function hasEpicOrEhrTech(techs: string[]) {
-  return techs.some((tech) => /epic|cerner|oracle health/i.test(tech));
-}
-
 /**
  * Builds dossier content from organized live research without OpenAI.
  * Keeps claims conservative and source-backed.
+ * Optional Apollo leadership results enrich Buying Committee names/titles.
  */
 export function localAnalyzeAccountResearch(
   liveResearch: LiveResearchResult,
+  options?: LocalAnalyzeOptions,
 ): AiAnalysisResult {
-  if (liveResearch.status !== "live" || liveResearch.items.length === 0) {
+  const apolloLeadership = options?.apolloLeadership;
+  const apolloOnlyLeaders = apolloLeadersToExtracted(apolloLeadership);
+  const hasLiveResearch =
+    liveResearch.status === "live" && liveResearch.items.length > 0;
+
+  // Allow Apollo leadership enrichment even when Tavily research is empty/unavailable.
+  if (!hasLiveResearch && apolloOnlyLeaders.length === 0) {
     return {
       status: "no_research",
       message:
-        "Local analysis needs live research sources first. Add a Tavily key and research an account.",
+        apolloLeadership?.status === "missing_key"
+          ? "Local analysis needs live research (Tavily) and/or Apollo leadership (APOLLO_API_KEY)."
+          : apolloLeadership?.status === "error"
+            ? `Local analysis needs live research sources. Apollo error: ${apolloLeadership.message}`
+            : "Local analysis needs live research sources first. Add a Tavily key and research an account.",
     };
   }
 
   const company = liveResearch.companyName;
-  const { organized } = liveResearch;
+  const organized = liveResearch.organized || {
+    leadership: [],
+    hiring: [],
+    ai: [],
+    technology: [],
+    initiatives: [],
+    financial: [],
+    compliance: [],
+    news: [],
+  };
   const initiativeItems = topItems(organized.initiatives, 5);
   const techItems = topItems([...organized.ai, ...organized.technology], 6);
   const hiringItems = topItems(organized.hiring, 10);
-  const leadershipItems = topItems(organized.leadership, 5);
   const financialItems = topItems(organized.financial, 5);
   const newsItems = topItems(organized.news || [], 5);
   const complianceItems = topItems(organized.compliance || [], 4);
@@ -951,12 +1033,16 @@ export function localAnalyzeAccountResearch(
   ]);
   const techDetected = techEvidence.map((item) => item.technology);
   const hiringFrequencies = countHiringTechFrequency(organized.hiring);
-  const extractedLeaders = extractLeaders([
-    ...organized.leadership,
-    ...liveResearch.items,
-  ]);
+  const webLeaders = hasLiveResearch
+    ? extractLeaders([...organized.leadership, ...liveResearch.items]).map(
+        (leader) => ({ ...leader, sourceKind: "web" as const }),
+      )
+    : [];
+  const apolloLeaders = apolloOnlyLeaders;
+  const extractedLeaders = mergeExtractedLeaders(apolloLeaders, webLeaders);
   const jobCategories = countJobCategories(organized.hiring);
   const financialSignals = detectFinancialSignals(organized.financial);
+  const apolloUsed = apolloLeaders.length > 0;
 
   const whatsHappening = uniqueBullets(
     [
@@ -1092,25 +1178,15 @@ export function localAnalyzeAccountResearch(
 
   const prospectTargets =
     extractedLeaders.length > 0
-      ? extractedLeaders.slice(0, 3).map((leader) => ({
+      ? extractedLeaders.slice(0, 4).map((leader) => ({
           name: leader.name,
           title: leader.title,
-          relevance: `Extracted from public source: ${formatHeadline(leader.sourceTitle, { companyName: company })}. Confirm before outreach.`,
+          relevance:
+            leader.sourceKind === "apollo"
+              ? `Apollo leadership match for ${apolloLeadership?.companyDomain || company}. Confirm current role before outreach.`
+              : `Extracted from public source: ${formatHeadline(leader.sourceTitle, { companyName: company })}. Confirm before outreach.`,
         }))
-      : [
-          {
-            name: "[Confirm from public sources]",
-            title: "CIO / technology executive",
-            relevance:
-              "No clearly named technology leaders were extracted from live sources yet. Confirm via company leadership pages before outreach.",
-          },
-          {
-            name: "[Confirm from public sources]",
-            title: "VP / Director Engineering",
-            relevance:
-              "Likely technical champion for a developer-tooling pilot — confirm the actual person.",
-          },
-        ];
+      : [];
 
   const cursorSellingAngles = buildCursorHiringAngles(organized.hiring);
   const aggregatedHiringSignals = buildAggregatedHiringSignals(
@@ -1118,6 +1194,24 @@ export function localAnalyzeAccountResearch(
     organized.hiring,
     hiringFrequencies,
   );
+  const extractedJobs = extractRelevantJobs(organized.hiring);
+  const topJobTechnologies = buildTopJobTechnologies(organized.hiring);
+  const hiringThemes = buildHiringThemes(organized.hiring);
+  const jobSalesSignals = buildJobSalesSignals(
+    company,
+    organized.hiring,
+    topJobTechnologies,
+    hiringThemes,
+  );
+  const technologySignals = buildTechnologySignals(
+    [...organized.ai, ...organized.technology, ...organized.hiring],
+    organized.hiring,
+  );
+  const strategicInitiatives = buildStrategicInitiatives([
+    ...organized.initiatives,
+    ...organized.news,
+    ...organized.ai,
+  ]);
 
   const freqSummary =
     hiringFrequencies.length > 0
@@ -1131,66 +1225,65 @@ export function localAnalyzeAccountResearch(
     isSample: false,
     totalRelevantOpenings: organized.hiring.length,
     categories: jobCategories,
-    technologiesDetected: techDetected,
+    technologiesDetected: topJobTechnologies.map((item) => item.technology),
+    extractedJobs,
+    topTechnologies: topJobTechnologies,
+    hiringThemes,
+    salesSignals: jobSalesSignals,
     cursorSellingAngles,
     signals: aggregatedHiringSignals,
     summary:
       organized.hiring.length > 0
-        ? `Found ${organized.hiring.length} live hiring-related sources for ${company}.${freqSummary} Aggregated HIRING / CLOUD / AI / DEVELOPER TOOL signals below are keyword matches across public listings — not a complete job-board census. Conclusions are labeled INFERENCE or SALES HYPOTHESIS.`
+        ? `Found ${organized.hiring.length} live hiring-related sources for ${company}.${freqSummary} Counts are keyword matches in public listings — not a complete job-board census.`
         : `No strong hiring sources were organized yet for ${company}.`,
   };
 
-  const ROLE_PLACEHOLDERS: Record<
-    BuyingCommitteeRole,
-    { name: string; title: string }
-  > = {
-    "EXECUTIVE SPONSOR": {
-      name: "[Confirm] CIO / technology executive",
-      title: "CIO / Chief Digital Officer",
-    },
-    "TECHNICAL CHAMPION": {
-      name: "[Confirm] VP / Director Engineering",
-      title: "VP Engineering / Platform",
-    },
-    "TECHNICAL EVALUATOR": {
-      name: "[Confirm] Enterprise / solution architect",
-      title: "Enterprise Architect",
-    },
-    "SECURITY / GOVERNANCE": {
-      name: "[Confirm] CISO / security leader",
-      title: "CISO / Security & Governance",
-    },
-    "ECONOMIC / PROCUREMENT": {
-      name: "[Confirm] Procurement / finance owner",
-      title: "Procurement / Finance stakeholder",
-    },
+  const ROLE_NOTES: Record<BuyingCommitteeRole, string> = {
+    "EXECUTIVE SPONSOR":
+      "No publicly identifiable CIO / CTO / CDO was extracted in this pass.",
+    "TECHNICAL CHAMPION":
+      "No publicly identifiable VP Engineering / platform leader was extracted in this pass.",
+    "TECHNICAL EVALUATOR":
+      "No publicly identifiable architect or engineering director was extracted in this pass.",
+    "SECURITY / GOVERNANCE":
+      "No publicly identifiable CISO / security leader was extracted in this pass.",
+    INFLUENCER:
+      "No publicly identifiable director-level or adjacent technology leader was extracted in this pass.",
+    "ECONOMIC / PROCUREMENT":
+      "No publicly identifiable finance / procurement owner was extracted in this pass.",
   };
 
   const usedRoles = new Set<BuyingCommitteeRole>();
   const buyingCommitteePeople: ExperimentalIntelligence["buyingCommittee"]["people"] =
     [];
 
-  for (const leader of extractedLeaders.slice(0, 5)) {
-    // Use title only — shared leadership-page snippets mention many executives
-    // and would otherwise mis-map everyone to finance/supply-chain.
+  for (const leader of extractedLeaders) {
     const role = inferBuyingRole(leader.title);
+    if (buyingCommitteePeople.length >= 8) break;
     usedRoles.add(role);
 
+    const fromApollo = leader.sourceKind === "apollo";
     buyingCommitteePeople.push({
       name: leader.name,
       title: leader.title,
       role,
+      roleInferred: true,
       relevantInitiative:
-        initiativeItems[0]?.title || "Technology / digital priorities",
+        strategicInitiatives[0]?.initiative ||
+        initiativeItems[0]?.title ||
+        "Technology / digital priorities (confirm)",
       potentialPriority: "Technology delivery and digital outcomes",
-      whyTheyMayCare:
-        "Named in public leadership/technology materials that may relate to tooling and delivery decisions.",
-      reasonToContact:
-        "Publicly associated with technology leadership — confirm current role before outreach.",
+      whyTheyMayCare: fromApollo
+        ? "Appears in Apollo technology leadership search for this account domain — likely relevant to tooling and delivery decisions."
+        : "Named in public leadership/technology materials that may relate to tooling and delivery decisions.",
+      reasonToContact: fromApollo
+        ? "Apollo-matched technology leader — confirm current role before outreach."
+        : "Publicly associated with technology leadership — confirm current role before outreach.",
       outreachAngle:
-        "Ask how digital/AI priorities are affecting engineering capacity and approved developer tools.",
+        "Ask how digital/AI priorities are affecting engineering capacity and whether an approved AI coding path exists.",
       evidence: leader.evidence,
       sourceUrl: leader.sourceUrl,
+      sourceTitle: leader.sourceTitle,
       confidence: "Medium",
       relationshipStatus: "UNKNOWN",
       claimType: "FACT",
@@ -1198,85 +1291,33 @@ export function localAnalyzeAccountResearch(
     });
   }
 
-  // Keep every buying-committee lane clear: placeholders instead of article titles.
-  (
-    [
-      "EXECUTIVE SPONSOR",
-      "TECHNICAL CHAMPION",
-      "TECHNICAL EVALUATOR",
-      "SECURITY / GOVERNANCE",
-      "ECONOMIC / PROCUREMENT",
-    ] as BuyingCommitteeRole[]
-  ).forEach((role) => {
-    if (usedRoles.has(role)) return;
-    const placeholder = ROLE_PLACEHOLDERS[role];
-    buyingCommitteePeople.push({
-      name: placeholder.name,
-      title: placeholder.title,
-      role,
-      relevantInitiative:
-        initiativeItems[0]?.title || "Technology / digital priorities",
-      potentialPriority: "Technology delivery and digital outcomes",
-      whyTheyMayCare:
-        "Role is typically involved in enterprise tooling decisions — confirm the actual person.",
-      reasonToContact: "Confirm identity before outreach.",
-      outreachAngle:
-        "Ask how digital/AI priorities are affecting engineering capacity and approved developer tools.",
-      evidence:
-        leadershipItems[0]?.snippet ||
-        "No clearly named person extracted for this role from live sources yet.",
-      sourceUrl: leadershipItems[0]?.url || "",
-      confidence: "Low",
-      relationshipStatus: "UNKNOWN",
-      claimType: "INFERENCE",
-      isPlaceholderName: true,
-    });
-  });
-
   const buyingCommittee: ExperimentalIntelligence["buyingCommittee"] = {
     isSample: false,
-    relationshipNote:
-      "Relationships are UNKNOWN unless a public source confirms them. Names appear only when a clear First Last + title pattern is found in live research — otherwise roles stay as confirm placeholders.",
+    relationshipNote: apolloUsed
+      ? `Named people come from Apollo and/or public web sources. Buying committee roles are INFERRED from title — not proof that someone is involved in purchasing Cursor. Do not treat this as an org chart.`
+      : "Named people appear only when a public source supports the name and title. Buying committee roles are INFERRED from title. Add APOLLO_API_KEY to enrich leadership from Apollo.",
     people: buyingCommitteePeople,
-    topPeopleToProspect: [
-      {
-        name: extractedLeaders[0]
-          ? extractedLeaders[0].name
-          : ROLE_PLACEHOLDERS["EXECUTIVE SPONSOR"].name,
-        title:
-          extractedLeaders[0]?.title ||
-          ROLE_PLACEHOLDERS["EXECUTIVE SPONSOR"].title,
-        role: "EXECUTIVE SPONSOR",
-        rankReason:
-          "Technology sponsorship usually sits with senior IT/digital leadership.",
-        relatedSignal:
-          leadershipItems[0]?.title || "Leadership research pending",
-        cursorAngle:
-          "Governed AI coding tools to support digital delivery capacity.",
-        firstConversationTopic:
-          "Where software delivery capacity is becoming a constraint.",
-      },
-      {
-        name: extractedLeaders.find(
-          (leader) => inferBuyingRole(leader.title) === "TECHNICAL CHAMPION",
-        )?.name ||
-          extractedLeaders[1]?.name ||
-          ROLE_PLACEHOLDERS["TECHNICAL CHAMPION"].name,
-        title:
-          extractedLeaders.find(
-            (leader) => inferBuyingRole(leader.title) === "TECHNICAL CHAMPION",
-          )?.title ||
-          extractedLeaders[1]?.title ||
-          ROLE_PLACEHOLDERS["TECHNICAL CHAMPION"].title,
-        role: "TECHNICAL CHAMPION",
-        rankReason: "Closest to developer workflow and pilot success.",
-        relatedSignal: hiringItems[0]?.title || "Hiring/technology research",
-        cursorAngle:
-          "Team productivity on active software and integration work.",
-        firstConversationTopic:
-          "Current developer tooling stack and pilot openness.",
-      },
-    ],
+    unfilledRoles: (
+      [
+        "EXECUTIVE SPONSOR",
+        "TECHNICAL CHAMPION",
+        "TECHNICAL EVALUATOR",
+        "SECURITY / GOVERNANCE",
+        "INFLUENCER",
+        "ECONOMIC / PROCUREMENT",
+      ] as BuyingCommitteeRole[]
+    )
+      .filter((role) => !usedRoles.has(role))
+      .map((role) => ({ role, note: ROLE_NOTES[role] })),
+    topPeopleToProspect: buyingCommitteePeople.slice(0, 5).map((person) => ({
+      name: person.name,
+      title: person.title,
+      role: person.role,
+      rankReason: person.whyTheyMayCare,
+      relatedSignal: person.relevantInitiative || hiringItems[0]?.title || "Live research",
+      cursorAngle: person.outreachAngle,
+      firstConversationTopic: person.outreachAngle,
+    })),
   };
 
   const researchText = combinedText(liveResearch.items);
@@ -1313,25 +1354,7 @@ export function localAnalyzeAccountResearch(
     ". This is a possible opportunity, not a confirmed customer problem.",
   ].join("");
 
-  const secondaryHypotheses = uniqueBullets(
-    [
-      organized.ai.length > 0
-        ? "SECONDARY: AI-related public activity may create openness to governed AI coding tools for builders — confirm approval status."
-        : "",
-      hasEpicOrEhrTech(techDetected)
-        ? "SECONDARY: Epic/EHR-adjacent signals may imply complex integration work where AI-assisted coding could help — validate with engineering."
-        : "",
-      financialSignals.some((signal) => /cost|margin|productivity/i.test(signal))
-        ? "SECONDARY: Financial/public language about cost or productivity may support a ROI conversation — do not invent figures."
-        : "",
-      complianceItems.length > 0
-        ? "SECONDARY: Compliance/security research context may support asking about shadow AI and approved developer tooling — not a claim of regulatory obligation."
-        : "",
-    ].filter(Boolean),
-    3,
-  );
-
-  const whyNowSynthesis: ExperimentalIntelligence["whyNowSynthesis"] =
+  const whyNowRaw: ExperimentalIntelligence["whyNowSynthesis"] =
     mergeWhyNowSignals(
       [
         ...newsItems.slice(0, 2).map((item) => ({
@@ -1420,10 +1443,14 @@ export function localAnalyzeAccountResearch(
               },
             ]
           : []),
-        ...regulatoryTriggersToWhyNowSignals(complianceSecurity.whyNowTriggers),
+        ...(complianceItems.length > 0
+          ? regulatoryTriggersToWhyNowSignals(complianceSecurity.whyNowTriggers).slice(0, 1)
+          : []),
       ],
       8,
     );
+
+  const whyNowSynthesis = rankWhyNowSignals(whyNowRaw, 5);
 
   const researchGaps: ExperimentalIntelligence["researchGaps"] = [
     {
@@ -1459,11 +1486,26 @@ export function localAnalyzeAccountResearch(
         extractedLeaders.find((leader) =>
           /engineer|platform|devops|architect/i.test(leader.title),
         )?.name ||
-        "No clearly named engineering VP extracted from live sources.",
+        (apolloLeadership?.status === "missing_key"
+          ? "Apollo key not set; web extraction found no clear engineering VP."
+          : "No clearly named engineering VP from Apollo or live web sources."),
       whyItMatters: "Technical champion identity is required for a real pilot path.",
       whoToAsk: "CIO chief of staff / HR leadership page",
       discoveryQuestion: "Who owns engineering productivity and developer experience?",
     },
+    ...(apolloLeadership?.status === "missing_key"
+      ? [
+          {
+            whatWeDontKnow: "Apollo-enriched buying committee",
+            currentEvidence: apolloLeadership.message,
+            whyItMatters:
+              "Apollo people search usually returns clearer CIO/CTO/CISO/VP Engineering names than web snippets alone.",
+            whoToAsk: "Add APOLLO_API_KEY in .env.local",
+            discoveryQuestion:
+              "After Apollo is connected, which technology leaders should we prioritize for first outreach?",
+          },
+        ]
+      : []),
     {
       whatWeDontKnow: "Primary-source Form 990 / bond / capital plan detail",
       currentEvidence:
@@ -1489,42 +1531,47 @@ export function localAnalyzeAccountResearch(
     ? "Governance angle: ask how security/compliance reviews AI coding tools and whether an approved path exists for builders."
     : "Governance angle: ask what controls would be required before an enterprise AI coding pilot.";
 
+  const namedTargets = buyingCommitteePeople.slice(0, 5).map((person) => ({
+    persona: `${person.name} — ${person.title}`,
+    whyThem: person.whyTheyMayCare,
+    talkAbout: person.outreachAngle,
+    relatedSignal: person.relevantInitiative,
+  }));
+
+  const personaFallbacks = [
+    {
+      persona: "CIO / technology executive (identity not confirmed)",
+      whyThem:
+        "This persona typically sponsors enterprise developer tooling. Confirm the actual person before outreach.",
+      talkAbout: "Digital delivery capacity and whether an approved AI coding path exists.",
+      relatedSignal:
+        strategicInitiatives[0]?.initiative || initiativeItems[0]?.title || "Live research",
+    },
+    {
+      persona: "VP / Director Engineering (identity not confirmed)",
+      whyThem:
+        "This persona is typically closest to developer workflow and a possible pilot. Confirm the actual person.",
+      talkAbout: topHiringFreq[0]
+        ? `Where ${topHiringFreq[0].label} and related stacks create delivery pressure.`
+        : "Where teams lose time and how AI coding tools could help.",
+      relatedSignal: hiringItems[0]?.title || techItems[0]?.title || "Live research",
+    },
+    {
+      persona: "CISO / security governance (identity not confirmed)",
+      whyThem:
+        "This persona often gates AI developer tooling in healthcare. Confirm the actual person.",
+      talkAbout: "Approved AI coding path, shadow AI, and third-party risk.",
+      relatedSignal:
+        complianceItems[0]?.title || newsItems[0]?.title || "Compliance research",
+    },
+  ];
+
   const prospectingPlan: ExperimentalIntelligence["prospectingPlan"] = {
     isSample: false,
-    whoToTarget: [
-      {
-        persona: extractedLeaders[0]
-          ? `${extractedLeaders[0].name} — ${extractedLeaders[0].title}`
-          : "CIO / technology executive (confirm)",
-        whyThem: "Likely sponsor for enterprise developer tooling.",
-        talkAbout: "Digital delivery capacity and governed AI adoption.",
-        relatedSignal:
-          leadershipItems[0]?.title || initiativeItems[0]?.title || "Live research",
-      },
-      {
-        persona: "VP / Director Engineering (confirm)",
-        whyThem: "Best technical champion for a pilot.",
-        talkAbout: topHiringFreq[0]
-          ? `Where ${topHiringFreq[0].label} and related stacks create delivery pressure.`
-          : "Where teams lose time and how AI coding tools could help.",
-        relatedSignal: hiringItems[0]?.title || techItems[0]?.title || "Live research",
-      },
-      {
-        persona: "CISO / security governance (confirm)",
-        whyThem: "Often gates AI developer tooling in regulated environments.",
-        talkAbout: "Approved AI coding path, shadow AI, and third-party risk.",
-        relatedSignal:
-          complianceItems[0]?.title || newsItems[0]?.title || "Compliance research",
-      },
-    ],
-    conversationAngles: [
-      outreachAngle1,
-      outreachAngle2,
-      outreachAngle3,
-      primaryHypothesis,
-      ...secondaryHypotheses,
-    ],
+    whoToTarget: namedTargets.length > 0 ? namedTargets : personaFallbacks,
+    conversationAngles: [outreachAngle1, outreachAngle2, outreachAngle3],
     strongestWhyNow:
+      whyNowSynthesis[0]?.trigger ||
       whyNow[0] ||
       `Public research indicates active technology/digital discussion at ${company}. Validate urgency with the customer.`,
     discoveryQuestions: [
@@ -1567,6 +1614,50 @@ Best,
     },
   };
 
+  const findingsByUrl = new Map<string, string[]>();
+  for (const person of buyingCommitteePeople) {
+    addFinding(findingsByUrl, person.sourceUrl, `${person.name} — ${person.title}`);
+  }
+  for (const signal of technologySignals) {
+    addFinding(findingsByUrl, signal.sourceUrl, `Technology: ${signal.technology}`);
+  }
+  for (const job of extractedJobs) {
+    addFinding(findingsByUrl, job.sourceUrl, `Job: ${job.title}`);
+  }
+  for (const initiative of strategicInitiatives) {
+    addFinding(findingsByUrl, initiative.sourceUrl, `Initiative: ${initiative.initiative}`);
+  }
+  for (const signal of whyNowSynthesis) {
+    addFinding(findingsByUrl, signal.sourceUrl, `Why Now: ${signal.trigger}`);
+  }
+
+  const evidenceLibrary = buildEvidenceLibrary({
+    items: liveResearch.items,
+    findingsByUrl,
+  });
+
+  const snapshotForOverview = buildAccountSnapshot(
+    company,
+    liveResearch.items,
+    initiativeItems[0]?.title || techItems[0]?.title || company,
+  );
+  const overview = buildOverview({
+    companyName: company,
+    snapshotIndustry: snapshotForOverview.industry,
+    snapshotScale: snapshotForOverview.sizeSignal,
+    initiatives: strategicInitiatives,
+    technologySignals,
+    whyNow: whyNowSynthesis,
+    people: buyingCommitteePeople.map((person) => ({
+      name: person.name,
+      title: person.title,
+      role: person.role,
+    })),
+    salesAngle:
+      prospectingPlan.conversationAngles[0] ||
+      primaryHypothesis,
+  });
+
   const recentHeadline =
     initiativeItems[0]?.title ||
     techItems[0]?.title ||
@@ -1591,7 +1682,15 @@ Best,
 
   return {
     status: "local",
-    message: `Local analysis built from ${liveResearch.items.length} organized live sources into a MEDDPICC + Command prospecting brief (no OpenAI required).`,
+    message: apolloUsed
+      ? `Local analysis built from ${liveResearch.items.length} live sources + ${apolloLeaders.length} Apollo leadership matches for buying committee.`
+      : `Local analysis built from ${liveResearch.items.length} organized live sources (no OpenAI required).${
+          apolloLeadership?.status === "missing_key"
+            ? " Add APOLLO_API_KEY to enrich leadership/buying committee."
+            : apolloLeadership?.status === "error"
+              ? ` Apollo enrichment error: ${apolloLeadership.message}`
+              : ""
+        }`,
     model: "local-rules",
     dossierPatch: {
       snapshot: buildAccountSnapshot(company, liveResearch.items, recentHeadline),
@@ -1653,9 +1752,71 @@ Best,
       })),
     },
     experimentalPatch: {
+      overview: {
+        ...overview,
+        executiveBrief: formatDisplayText(overview.executiveBrief, formatOpts),
+        recommendedSalesAngle: formatDisplayText(
+          overview.recommendedSalesAngle,
+          formatOpts,
+        ),
+        whyNow: overview.whyNow.map((item) => ({
+          trigger: formatHeadline(item.trigger, formatOpts),
+          evidence: formatDisplayText(item.evidence, formatOpts),
+        })),
+        initiatives: overview.initiatives.map((item) =>
+          formatHeadline(item, formatOpts),
+        ),
+        peopleToEngage: overview.peopleToEngage.map((person) => ({
+          ...person,
+          name: formatPersonName(person.name, formatOpts),
+          title: formatJobTitle(person.title, formatOpts),
+        })),
+      },
+      technologySignals: technologySignals.map((signal) => ({
+        ...signal,
+        evidence: formatDisplayText(signal.evidence, formatOpts),
+        sourceTitle: formatHeadline(signal.sourceTitle, formatOpts),
+        whyItMayMatter: formatDisplayText(signal.whyItMayMatter, formatOpts),
+      })),
+      strategicInitiatives: strategicInitiatives.map((item) => ({
+        ...item,
+        initiative: formatHeadline(item.initiative, formatOpts),
+        whatIsHappening: formatDisplayText(item.whatIsHappening, formatOpts),
+        evidence: formatDisplayText(item.evidence, formatOpts),
+        sourceTitle: formatHeadline(item.sourceTitle, formatOpts),
+        technologyImplication: formatDisplayText(
+          item.technologyImplication,
+          formatOpts,
+        ),
+        cursorRelevance: item.cursorRelevance
+          ? formatDisplayText(item.cursorRelevance, formatOpts)
+          : undefined,
+        executiveInvolved: item.executiveInvolved
+          ? formatPersonName(item.executiveInvolved, formatOpts)
+          : undefined,
+      })),
+      evidenceLibrary: evidenceLibrary.map((source) => ({
+        ...source,
+        title: formatHeadline(source.title, formatOpts),
+      })),
       jobIntelligence: {
         ...jobIntelligence,
         summary: formatDisplayText(jobIntelligence.summary, formatOpts),
+        extractedJobs: jobIntelligence.extractedJobs.map((job) => ({
+          ...job,
+          title: formatJobTitle(job.title, formatOpts),
+          responsibilities: formatDisplayText(job.responsibilities, {
+            ...formatOpts,
+            ensurePunctuation: false,
+          }),
+          sourceTitle: formatHeadline(job.sourceTitle, formatOpts),
+        })),
+        salesSignals: jobIntelligence.salesSignals.map((signal) => ({
+          ...signal,
+          fact: formatDisplayText(signal.fact, formatOpts),
+          inference: formatDisplayText(signal.inference, formatOpts),
+          salesHypothesis: formatDisplayText(signal.salesHypothesis, formatOpts),
+        })),
         cursorSellingAngles: jobIntelligence.cursorSellingAngles.map((angle) => ({
           ...angle,
           skillOrTech: formatHeadline(angle.skillOrTech, formatOpts),

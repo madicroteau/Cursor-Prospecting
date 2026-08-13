@@ -48,6 +48,7 @@ export type TavilySearchOptions = {
   excludeDomains?: string[];
   timeRange?: "day" | "week" | "month" | "year";
   chunksPerSource?: number;
+  timeoutMs?: number;
 };
 
 export function hasTavilyApiKey() {
@@ -92,6 +93,8 @@ export async function tavilySearch(
     },
     body: JSON.stringify(body),
     cache: "no-store",
+    // Prevent hung dossier pages when Tavily/DNS stalls (was blocking 3+ minutes).
+    signal: AbortSignal.timeout(options?.timeoutMs ?? 12_000),
   });
 
   if (!response.ok) {
@@ -126,7 +129,7 @@ export async function tavilyExtract(
     throw new Error("Missing TAVILY_API_KEY");
   }
 
-  const unique = [...new Set(urls.filter(Boolean))].slice(0, 12);
+  const unique = [...new Set(urls.filter(Boolean))].slice(0, 6);
   if (unique.length === 0) return [];
 
   const response = await fetch("https://api.tavily.com/extract", {
@@ -140,6 +143,7 @@ export async function tavilyExtract(
       extract_depth: options?.extractDepth ?? "basic",
     }),
     cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!response.ok) {

@@ -21,8 +21,10 @@ function normalizeWebsiteInput(website: string) {
 
 export function BuildDossierForm() {
   const router = useRouter();
-  const [companyName, setCompanyName] = useState("");
-  const [companyWebsite, setCompanyWebsite] = useState("");
+  const [companyName, setCompanyName] = useState("AdventHealth");
+  const [companyWebsite, setCompanyWebsite] = useState(
+    "https://www.adventhealth.com",
+  );
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,7 +45,7 @@ export function BuildDossierForm() {
       params.set("website", website);
     }
 
-    const target = `/dossier/executive-brief?${params.toString()}`;
+    const target = `/dossier/overview?${params.toString()}`;
     setIsSubmitting(true);
     router.push(target);
   }
@@ -116,7 +118,8 @@ export function BuildDossierForm() {
       </form>
 
       <p className="mt-6 text-center text-xs text-text-muted">
-        Research powered by public sources. No CRM connection or login required.
+        Public-source research only. Findings are labeled FACT, INFERENCE, or
+        SALES HYPOTHESIS. No CRM login required.
       </p>
     </div>
   );

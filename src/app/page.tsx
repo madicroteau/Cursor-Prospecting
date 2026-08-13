@@ -32,8 +32,7 @@ export default function HomePage() {
             ACCOUNT INTEL
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-text-secondary">
-            Turn public account signals into actionable enterprise sales
-            intelligence.
+            What do I need to know before prospecting into this account?
           </p>
         </div>
 

@@ -12,4 +12,5 @@ export type BuyingCommitteeRole =
   | "TECHNICAL CHAMPION"
   | "TECHNICAL EVALUATOR"
   | "SECURITY / GOVERNANCE"
+  | "INFLUENCER"
   | "ECONOMIC / PROCUREMENT";

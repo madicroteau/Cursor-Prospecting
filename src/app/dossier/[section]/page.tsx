@@ -7,7 +7,7 @@ import { DossierTopNav } from "@/components/dossier/DossierTopNav";
 import { SiteHeader } from "@/components/SiteHeader";
 import {
   DEFAULT_DOSSIER_SECTION,
-  isDossierSectionId,
+  resolveDossierSection,
 } from "@/lib/dossier-sections";
 import {
   buildAccountDossierBundle,
@@ -31,7 +31,9 @@ export default async function DossierSectionRoute({
   const { section: rawSection } = await params;
   const query = await searchParams;
 
-  if (!isDossierSectionId(rawSection)) {
+  const resolvedSection = resolveDossierSection(rawSection);
+
+  if (!resolvedSection) {
     const fallback = new URLSearchParams();
     if (query.name) fallback.set("name", query.name);
     if (query.website) fallback.set("website", query.website);
@@ -39,6 +41,14 @@ export default async function DossierSectionRoute({
     redirect(
       `/dossier/${DEFAULT_DOSSIER_SECTION}${suffix ? `?${suffix}` : ""}`,
     );
+  }
+
+  if (resolvedSection !== rawSection) {
+    const next = new URLSearchParams();
+    if (query.name) next.set("name", query.name);
+    if (query.website) next.set("website", query.website);
+    const suffix = next.toString();
+    redirect(`/dossier/${resolvedSection}${suffix ? `?${suffix}` : ""}`);
   }
 
   const companyName = query.name?.trim() || "AdventHealth";
@@ -66,7 +76,7 @@ export default async function DossierSectionRoute({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-400">
-                Account Dossier
+                Account Intel
               </p>
               <h1 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
                 {dossier.companyName}
@@ -94,6 +104,9 @@ export default async function DossierSectionRoute({
                 </svg>
               </Link>
               <p className="mt-3 max-w-2xl text-sm text-text-muted">
+                What do I need to know before prospecting into this account?
+              </p>
+              <p className="mt-2 max-w-2xl text-sm text-text-muted">
                 {aiAnalysis.message}
               </p>
             </div>
@@ -117,12 +130,12 @@ export default async function DossierSectionRoute({
             </div>
           }
         >
-          <DossierTopNav activeSection={rawSection} />
+          <DossierTopNav activeSection={resolvedSection} />
         </Suspense>
 
         <div className="py-8">
           <DossierSectionPage
-            section={rawSection}
+            section={resolvedSection}
             dossier={dossier}
             liveResearch={liveResearch}
           />
