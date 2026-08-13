@@ -1,0 +1,17 @@
+{
+  "name": "Account Intel",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev",
+      "description": "Next.js dev server for the Account Intel app. Serves on http://localhost:3000 (falls back to 3001/3010 if the port is taken)."
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 3000
+    }
+  ]
+}
