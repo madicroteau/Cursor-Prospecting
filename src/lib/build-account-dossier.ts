@@ -43,8 +43,8 @@ function normalizeWebsiteForCache(website: string, companyName: string) {
 }
 
 function cacheKey(companyName: string, companyWebsite: string) {
-  // v6: demo-ready structured intelligence (overview/tech/jobs/initiatives/sources)
-  return `v6|${companyName.trim().toLowerCase()}|${normalizeWebsiteForCache(
+  // v7: Apollo people enrichment (full names) + org technologies
+  return `v7|${companyName.trim().toLowerCase()}|${normalizeWebsiteForCache(
     companyWebsite,
     companyName,
   ).toLowerCase()}`;

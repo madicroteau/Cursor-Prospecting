@@ -154,12 +154,18 @@ export function formatPersonName(
     return text.replace(/^\[confirm/i, "[Confirm");
   }
 
+  const parts = text.split(/\s+/).filter(Boolean);
+  const titleWords =
+    /\b(is|are|was|were|and|the|of|system|names|vice|president|chief|officer|director|manager|architect)\b/i;
+  // Allow single first names from Apollo when last name is still masked.
+  const singleFirstName =
+    parts.length === 1 && /^[A-Za-z][A-Za-z'.-]{1,30}$/.test(parts[0]);
+
   const junkName =
-    /\b(is|are|was|were|and|the|of|system|names|vice|president|chief|officer)\b/i.test(
-      text,
-    ) ||
-    text.split(/\s+/).length > 4 ||
-    text.split(/\s+/).length < 2;
+    (!singleFirstName && titleWords.test(text)) ||
+    parts.length > 5 ||
+    parts.length < 1 ||
+    (parts.length === 1 && !singleFirstName);
 
   if (junkName) {
     return "[Confirm from public sources]";

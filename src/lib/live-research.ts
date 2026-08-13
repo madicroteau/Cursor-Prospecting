@@ -154,7 +154,15 @@ const RESEARCH_PASSES: ResearchPass[] = [
     pass: "technology-stack",
     bucket: "technology",
     buildQuery: (c) =>
-      `${c} (Epic OR AWS OR Azure OR Kubernetes OR GitHub OR Python OR Java OR TypeScript OR ".NET") technology`,
+      `${c} (Epic OR AWS OR Azure OR GCP OR Kubernetes OR Docker OR Terraform OR GitHub OR GitLab OR Python OR Java OR TypeScript OR ".NET") technology OR engineering OR platform`,
+    maxResults: 8,
+    searchDepth: "basic",
+  },
+  {
+    pass: "technology-ehr-cloud",
+    bucket: "technology",
+    buildQuery: (c) =>
+      `${c} Epic EHR OR "electronic health record" OR "cloud migration" OR "Azure DevOps" OR CI/CD OR "developer experience"`,
     maxResults: 6,
     searchDepth: "basic",
   },
@@ -162,8 +170,8 @@ const RESEARCH_PASSES: ResearchPass[] = [
     pass: "technology-ai-tools",
     bucket: "ai",
     buildQuery: (c) =>
-      `${c} (Copilot OR Claude OR "generative AI" OR LLM OR Databricks OR Snowflake) technology OR partnership`,
-    maxResults: 5,
+      `${c} (Copilot OR Claude OR "generative AI" OR LLM OR "AI coding" OR Databricks OR Snowflake) technology OR partnership`,
+    maxResults: 6,
     searchDepth: "basic",
   },
   {
@@ -244,8 +252,8 @@ function normalizeWebsite(website: string, companyName: string) {
 function cacheKey(companyName: string, companyWebsite: string) {
   const name = companyName.trim().toLowerCase();
   const website = normalizeWebsite(companyWebsite, companyName).toLowerCase();
-  // v5: lean multi-pass + request timeouts (speed)
-  return `v5|${name}|${website}`;
+  // v7: stronger technology passes + Apollo-aligned cache bust
+  return `v7|${name}|${website}`;
 }
 
 function dedupeResults(items: LiveResearchItem[]) {

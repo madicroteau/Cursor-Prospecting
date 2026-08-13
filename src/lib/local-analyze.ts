@@ -323,18 +323,81 @@ function apolloLeadersToExtracted(
     return [];
   }
 
-  return apollo.people.map((person) => ({
-    name: person.name,
-    title: person.title,
-    evidence: `Apollo people search for ${apollo.companyDomain}: ${person.name}, ${person.title}${
-      person.organizationName ? ` at ${person.organizationName}` : ""
-    }. Confirm current role before outreach.`,
-    sourceUrl:
-      person.linkedinUrl ||
-      `https://www.apollo.io/people?q=${encodeURIComponent(person.name)}`,
-    sourceTitle: `Apollo · ${person.title}`,
-    sourceKind: "apollo" as const,
+  return apollo.people.map((person) => {
+    const nameNote = person.nameEnriched
+      ? "Full name from Apollo enrichment."
+      : "Apollo search returned a first name only — confirm full legal name before outreach.";
+    return {
+      name: person.name,
+      title: person.title,
+      evidence: `Apollo leadership for ${apollo.companyDomain}: ${person.name}, ${person.title}${
+        person.organizationName ? ` at ${person.organizationName}` : ""
+      }. ${nameNote}`,
+      sourceUrl:
+        person.linkedinUrl ||
+        `https://www.apollo.io/people?q=${encodeURIComponent(person.name)}`,
+      sourceTitle: `Apollo · ${person.title}`,
+      sourceKind: "apollo" as const,
+    };
+  });
+}
+
+function mapApolloTechCategory(
+  category?: string,
+): ExperimentalIntelligence["technologySignals"][number]["category"] {
+  const value = (category || "").toLowerCase();
+  if (/ai|ml|machine|llm|copilot|claude/.test(value)) return "AI/ML";
+  if (/cloud|aws|azure|gcp/.test(value)) return "Cloud";
+  if (/devops|kubernetes|docker|terraform/.test(value)) return "DevOps";
+  if (/ci\/?cd|pipeline/.test(value)) return "CI/CD";
+  if (/data|snowflake|databricks|warehouse/.test(value)) return "Data platforms";
+  if (/security|iam|sso/.test(value)) return "Security";
+  if (/git|source|repo/.test(value)) return "Source control";
+  if (/language|python|java|javascript|\.net|typescript/.test(value)) {
+    return "Programming languages";
+  }
+  if (/develop|ide|editor|sdk/.test(value)) return "Developer tools";
+  if (/infra|server|network/.test(value)) return "Infrastructure";
+  if (/app|crm|erp|ehr|epic|salesforce/.test(value)) {
+    return "Enterprise applications";
+  }
+  return "Application platforms";
+}
+
+function apolloTechnologiesToSignals(
+  apollo?: ApolloLeadershipResult,
+): ExperimentalIntelligence["technologySignals"] {
+  if (!apollo || apollo.status !== "live" || apollo.technologies.length === 0) {
+    return [];
+  }
+
+  return apollo.technologies.slice(0, 12).map((tech) => ({
+    technology: tech.name,
+    category: mapApolloTechCategory(tech.category || tech.name),
+    evidence: `Apollo organization enrichment lists ${tech.name} among current technologies for ${apollo.companyDomain}.`,
+    sourceTitle: `Apollo technologies · ${apollo.companyDomain}`,
+    sourceUrl: `https://www.${apollo.companyDomain}`,
+    mentionCount: 1,
+    confidence: "Medium" as const,
+    whyItMayMatter:
+      "INFERENCE: Apollo-reported stack can inform tooling conversations — confirm what teams actually use day to day.",
+    claimType: "FACT" as const,
   }));
+}
+
+function mergeTechnologySignals(
+  primary: ExperimentalIntelligence["technologySignals"],
+  secondary: ExperimentalIntelligence["technologySignals"],
+) {
+  const seen = new Set<string>();
+  const merged: ExperimentalIntelligence["technologySignals"] = [];
+  for (const signal of [...primary, ...secondary]) {
+    const key = signal.technology.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(signal);
+  }
+  return merged.slice(0, 12);
 }
 
 function mergeExtractedLeaders(
@@ -1203,9 +1266,12 @@ export function localAnalyzeAccountResearch(
     topJobTechnologies,
     hiringThemes,
   );
-  const technologySignals = buildTechnologySignals(
-    [...organized.ai, ...organized.technology, ...organized.hiring],
-    organized.hiring,
+  const technologySignals = mergeTechnologySignals(
+    buildTechnologySignals(
+      [...organized.ai, ...organized.technology, ...organized.hiring],
+      organized.hiring,
+    ),
+    apolloTechnologiesToSignals(apolloLeadership),
   );
   const strategicInitiatives = buildStrategicInitiatives([
     ...organized.initiatives,
