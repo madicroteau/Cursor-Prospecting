@@ -1,7 +1,8 @@
 import type { LiveResearchItem, LiveResearchResult } from "@/lib/live-research";
 
 /**
- * Step 7 research categories for the Account Intel dossier.
+ * Research categories for the Account Intel dossier.
+ * Includes dedicated compliance and recent-news buckets from multi-pass research.
  */
 export const RESEARCH_CATEGORIES = [
   "leadership",
@@ -10,6 +11,8 @@ export const RESEARCH_CATEGORIES = [
   "technology",
   "initiatives",
   "financial",
+  "compliance",
+  "news",
 ] as const;
 
 export type ResearchCategory = (typeof RESEARCH_CATEGORIES)[number];
@@ -23,6 +26,8 @@ export const RESEARCH_CATEGORY_LABELS: Record<ResearchCategory, string> = {
   technology: "Technology",
   initiatives: "Strategic Initiatives",
   financial: "Financial / Public Information",
+  compliance: "Regulatory / Compliance",
+  news: "Recent News / Triggers",
 };
 
 const KEYWORDS: Record<ResearchCategory, string[]> = {
@@ -37,6 +42,7 @@ const KEYWORDS: Record<ResearchCategory, string[]> = {
     "leadership",
     "appointed",
     "names",
+    "biography",
   ],
   hiring: [
     "job",
@@ -47,6 +53,7 @@ const KEYWORDS: Record<ResearchCategory, string[]> = {
     "opening",
     "recruit",
     "software",
+    "indeed",
   ],
   ai: [
     " artificial intelligence",
@@ -55,6 +62,7 @@ const KEYWORDS: Record<ResearchCategory, string[]> = {
     "machine learning",
     "llm",
     "copilot",
+    "claude",
     "ai-",
     " ai ",
     "ai/",
@@ -68,6 +76,10 @@ const KEYWORDS: Record<ResearchCategory, string[]> = {
     "platform",
     "devops",
     "kubernetes",
+    "github",
+    "gitlab",
+    "docker",
+    "terraform",
     "ehr",
     "digital",
     "technology",
@@ -82,6 +94,7 @@ const KEYWORDS: Record<ResearchCategory, string[]> = {
     "roadmap",
     "vision",
     "partnership",
+    "smart hospital",
   ],
   financial: [
     "financial",
@@ -95,8 +108,37 @@ const KEYWORDS: Record<ResearchCategory, string[]> = {
     "funding",
     "acquisition",
     "operating income",
+    "operating margin",
     "bond rating",
     "credit rating",
+    "audited",
+  ],
+  compliance: [
+    "hipaa",
+    "ocr",
+    "cms",
+    "nist",
+    "cisa",
+    "compliance",
+    "regulation",
+    "security rule",
+    "breach",
+    "privacy",
+    "ahca",
+    "enforcement",
+    "ssdf",
+  ],
+  news: [
+    "announces",
+    "announced",
+    "appoints",
+    "appointed",
+    "partners",
+    "acquisition",
+    "opens",
+    "launches",
+    "press release",
+    "newsroom",
   ],
 };
 
@@ -105,10 +147,11 @@ function scoreCategory(item: LiveResearchItem, category: ResearchCategory) {
   let score = 0;
 
   // Prefer the search bucket that produced the result.
-  if (item.bucket === category) score += 5;
+  if (item.bucket === category) score += 8;
   if (item.bucket === "overview" && category === "initiatives") score += 2;
   if (item.bucket === "news" && category === "initiatives") score += 1;
   if (item.bucket === "technology" && category === "ai") score += 1;
+  if (item.bucket === "compliance" && category === "news") score += 1;
 
   for (const keyword of KEYWORDS[category]) {
     if (text.includes(keyword.trim().toLowerCase())) {
@@ -120,6 +163,26 @@ function scoreCategory(item: LiveResearchItem, category: ResearchCategory) {
 }
 
 function classifyItem(item: LiveResearchItem): ResearchCategory {
+  // Trust dedicated research passes when the bucket is a first-class category.
+  if (
+    item.bucket === "leadership" ||
+    item.bucket === "hiring" ||
+    item.bucket === "ai" ||
+    item.bucket === "technology" ||
+    item.bucket === "initiatives" ||
+    item.bucket === "financial" ||
+    item.bucket === "compliance" ||
+    item.bucket === "news"
+  ) {
+    // Still allow strong AI keyword overrides from technology bucket.
+    if (item.bucket === "technology") {
+      const aiScore = scoreCategory(item, "ai");
+      const techScore = scoreCategory(item, "technology");
+      if (aiScore > techScore + 2) return "ai";
+    }
+    return item.bucket;
+  }
+
   let best: ResearchCategory = "initiatives";
   let bestScore = -1;
 
@@ -134,15 +197,21 @@ function classifyItem(item: LiveResearchItem): ResearchCategory {
   return best;
 }
 
-export function organizeResearch(items: LiveResearchItem[]): OrganizedResearch {
-  const organized: OrganizedResearch = {
+function emptyOrganized(): OrganizedResearch {
+  return {
     leadership: [],
     hiring: [],
     ai: [],
     technology: [],
     initiatives: [],
     financial: [],
+    compliance: [],
+    news: [],
   };
+}
+
+export function organizeResearch(items: LiveResearchItem[]): OrganizedResearch {
+  const organized = emptyOrganized();
 
   for (const item of items) {
     organized[classifyItem(item)].push(item);

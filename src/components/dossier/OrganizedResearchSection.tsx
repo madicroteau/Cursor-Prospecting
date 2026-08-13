@@ -89,6 +89,8 @@ export function OrganizedResearchSummary({
     "technology",
     "initiatives",
     "financial",
+    "compliance",
+    "news",
   ];
 
   return (

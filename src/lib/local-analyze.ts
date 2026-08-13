@@ -58,52 +58,101 @@ function bulletFromItem(item: LiveResearchItem, companyName?: string) {
   return `${title}: ${body}${suffix}`;
 }
 
-const TECH_CATALOG = [
-  "Epic",
-  "Cerner",
-  "Oracle Health",
-  "AWS",
-  "Azure",
-  "Google Cloud",
-  "GitHub",
-  "GitLab",
-  "Kubernetes",
-  "Docker",
-  "Snowflake",
-  "Databricks",
-  "Python",
-  "Java",
-  "TypeScript",
-  "React",
-  ".NET",
-  "Oracle",
-  "Salesforce",
-  "ServiceNow",
-  "Tableau",
-  "Power BI",
-  "Generative AI",
-  "Machine Learning",
-  "LLM",
-  "Terraform",
-  "Kafka",
+type TechCatalogEntry = {
+  label: string;
+  keywords: string[];
+  group:
+    | "cloud"
+    | "language"
+    | "devops"
+    | "ai"
+    | "data"
+    | "ehr"
+    | "devtools"
+    | "security";
+};
+
+/** Technologies searched with evidence — do not invent beyond matches. */
+const TECH_CATALOG: TechCatalogEntry[] = [
+  { label: "GitHub", keywords: ["github"], group: "devtools" },
+  { label: "GitLab", keywords: ["gitlab"], group: "devtools" },
+  { label: "VS Code", keywords: ["vs code", "vscode", "visual studio code"], group: "devtools" },
+  { label: "Azure DevOps", keywords: ["azure devops", "ado "], group: "devtools" },
+  { label: "AWS", keywords: ["aws", "amazon web services"], group: "cloud" },
+  { label: "Azure", keywords: ["azure", "microsoft azure"], group: "cloud" },
+  { label: "GCP", keywords: ["gcp", "google cloud"], group: "cloud" },
+  { label: "Python", keywords: ["python"], group: "language" },
+  { label: "Java", keywords: [" java ", "java,", "java.", "java developer"], group: "language" },
+  { label: "JavaScript", keywords: ["javascript", "node.js", "nodejs"], group: "language" },
+  { label: "TypeScript", keywords: ["typescript"], group: "language" },
+  { label: ".NET", keywords: [".net", "dotnet", "c#", "c sharp"], group: "language" },
+  { label: "Kubernetes", keywords: ["kubernetes", "k8s"], group: "devops" },
+  { label: "Docker", keywords: ["docker"], group: "devops" },
+  { label: "Terraform", keywords: ["terraform"], group: "devops" },
+  { label: "CI/CD", keywords: ["ci/cd", "continuous integration", "continuous delivery"], group: "devops" },
+  { label: "Snowflake", keywords: ["snowflake"], group: "data" },
+  { label: "Databricks", keywords: ["databricks"], group: "data" },
+  { label: "Epic", keywords: ["epic"], group: "ehr" },
+  { label: "LLMs", keywords: [" llm", "llms", "large language model"], group: "ai" },
+  { label: "Generative AI", keywords: ["generative ai", "genai", "gen ai"], group: "ai" },
+  { label: "Copilot", keywords: ["copilot", "github copilot"], group: "ai" },
+  { label: "Claude", keywords: ["claude", "anthropic"], group: "ai" },
+  { label: "AI coding tools", keywords: ["ai coding", "ai pair", "coding assistant"], group: "ai" },
+  { label: "Cerner", keywords: ["cerner"], group: "ehr" },
+  { label: "Oracle Health", keywords: ["oracle health"], group: "ehr" },
+  { label: "React", keywords: ["react"], group: "language" },
+  { label: "Salesforce", keywords: ["salesforce"], group: "devtools" },
+  { label: "ServiceNow", keywords: ["servicenow"], group: "devtools" },
+  { label: "Kafka", keywords: ["kafka"], group: "data" },
 ];
 
 const JOB_CATEGORIES: { category: string; keywords: string[] }[] = [
   { category: "Software Engineering", keywords: ["software engineer", "software developer", "full stack", "fullstack"] },
   { category: "Application Development", keywords: ["application developer", "app developer", ".net", "java developer"] },
-  { category: "AI / ML", keywords: ["machine learning", "data scientist", "generative ai", " ai ", "llm"] },
+  { category: "AI / ML", keywords: ["machine learning", "data scientist", "generative ai", " ai engineer", "llm"] },
   { category: "Data Engineering", keywords: ["data engineer", "data platform", "etl", "snowflake", "databricks"] },
-  { category: "Cloud", keywords: ["cloud", "aws", "azure", "gcp", "google cloud"] },
+  { category: "Cloud", keywords: ["cloud engineer", "cloud architect", "aws", "azure", "gcp", "google cloud"] },
   { category: "Platform Engineering", keywords: ["platform engineer", "platform engineering", "developer experience", "devex"] },
   { category: "DevOps", keywords: ["devops", "sre", "site reliability", "ci/cd", "kubernetes"] },
-  { category: "Cybersecurity", keywords: ["security", "cyber", "ciso", "infosec"] },
-  { category: "Enterprise Architecture", keywords: ["architect", "architecture", "enterprise architect"] },
-  { category: "Epic / Healthcare Applications", keywords: ["epic", "ehr", "cerner", "clinical systems"] },
+  { category: "Cybersecurity", keywords: ["security engineer", "cyber", "ciso", "infosec"] },
+  { category: "Enterprise Architecture", keywords: ["enterprise architect", "enterprise architecture"] },
+  { category: "Epic / Healthcare Applications", keywords: ["epic", "ehr", "cerner", "clinical systems", "integration engineer"] },
 ];
 
+type TechEvidence = {
+  technology: string;
+  group: TechCatalogEntry["group"];
+  mentionCount: number;
+  evidence: string;
+  sourceUrl: string;
+  sourceTitle: string;
+};
+
+function itemMentionsTech(item: LiveResearchItem, entry: TechCatalogEntry) {
+  const text = ` ${item.title} ${item.snippet} ${item.url} `.toLowerCase();
+  return entry.keywords.some((keyword) => text.includes(keyword.toLowerCase()));
+}
+
+function detectTechWithEvidence(items: LiveResearchItem[]): TechEvidence[] {
+  const found: TechEvidence[] = [];
+  for (const entry of TECH_CATALOG) {
+    const matches = items.filter((item) => itemMentionsTech(item, entry));
+    if (matches.length === 0) continue;
+    const best = matches[0];
+    found.push({
+      technology: entry.label,
+      group: entry.group,
+      mentionCount: matches.length,
+      evidence: softTruncate(best.snippet || best.title, 220),
+      sourceUrl: best.url,
+      sourceTitle: best.title,
+    });
+  }
+  return found.sort((a, b) => b.mentionCount - a.mentionCount);
+}
+
 function detectTech(items: LiveResearchItem[]) {
-  const text = combinedText(items).toLowerCase();
-  return TECH_CATALOG.filter((tech) => text.includes(tech.toLowerCase()));
+  return detectTechWithEvidence(items).map((item) => item.technology);
 }
 
 function countJobCategories(items: LiveResearchItem[]) {
@@ -114,6 +163,131 @@ function countJobCategories(items: LiveResearchItem[]) {
     }).length;
     return { category, count };
   });
+}
+
+type HiringFrequency = {
+  label: string;
+  count: number;
+  group: "cloud" | "language" | "devops" | "ai" | "devtools" | "security" | "data" | "ehr";
+  supportingTitles: string[];
+  sourceUrls: string[];
+};
+
+function countHiringTechFrequency(items: LiveResearchItem[]): HiringFrequency[] {
+  const frequencies: HiringFrequency[] = [];
+  for (const entry of TECH_CATALOG) {
+    const matches = items.filter((item) => itemMentionsTech(item, entry));
+    if (matches.length === 0) continue;
+    frequencies.push({
+      label: entry.label,
+      count: matches.length,
+      group: entry.group,
+      supportingTitles: matches.slice(0, 4).map((item) => item.title),
+      sourceUrls: matches.slice(0, 4).map((item) => item.url),
+    });
+  }
+  return frequencies.sort((a, b) => b.count - a.count);
+}
+
+function buildAggregatedHiringSignals(
+  company: string,
+  hiringItems: LiveResearchItem[],
+  frequencies: HiringFrequency[],
+): ExperimentalIntelligence["jobIntelligence"]["signals"] {
+  const signals: ExperimentalIntelligence["jobIntelligence"]["signals"] = [];
+  const total = hiringItems.length;
+
+  const byGroup = (group: HiringFrequency["group"]) =>
+    frequencies.filter((item) => item.group === group);
+
+  const pushAgg = (
+    signal: string,
+    groupItems: HiringFrequency[],
+    implication: string,
+    claimType: "INFERENCE" | "SALES_HYPOTHESIS",
+    cursorRelevance: string,
+  ) => {
+    if (groupItems.length === 0) return;
+    const top = groupItems.slice(0, 5);
+    const freqLine = top.map((item) => `${item.count} mention ${item.label}`).join("; ");
+    signals.push({
+      signal,
+      supportingJobPostings: top.flatMap((item) => item.supportingTitles).slice(0, 5),
+      supportingJobCount: top.reduce((sum, item) => sum + item.count, 0),
+      technologiesDetected: top.map((item) => item.label),
+      skillsAndTasks: top.map((item) => item.label),
+      evidence: `Across ${total} hiring-related sources: ${freqLine}.`,
+      sourceUrls: [...new Set(top.flatMap((item) => item.sourceUrls))].slice(0, 5),
+      businessImplication: implication,
+      cursorRelevance,
+      confidence: top[0].count >= 3 ? "Medium" : "Low",
+      claimType,
+    });
+  };
+
+  pushAgg(
+    "CLOUD SIGNALS",
+    byGroup("cloud"),
+    `Hiring pattern may indicate active cloud platform work at ${company}. This is an inference from public job/tech wording — not confirmation of a specific cloud strategy.`,
+    "INFERENCE",
+    "SALES HYPOTHESIS: Cloud engineering teams often write infra, services, and integration code where a governed AI coding tool can speed delivery — validate stack and approval path.",
+  );
+  pushAgg(
+    "TECHNOLOGY FREQUENCY",
+    frequencies.slice(0, 6),
+    `Repeated technology mentions across hiring sources suggest where build work is concentrated. Counts are keyword matches in public sources, not a complete job-board census.`,
+    "INFERENCE",
+    "SALES HYPOTHESIS: Use the highest-frequency languages/platforms in discovery to ask where custom development creates delivery pressure.",
+  );
+  pushAgg(
+    "DEVELOPER TOOL SIGNALS",
+    [...byGroup("devtools"), ...byGroup("devops")],
+    `Mentions of developer platforms, CI/CD, or DevOps tooling may indicate investment in engineering delivery systems.`,
+    "INFERENCE",
+    "SALES HYPOTHESIS: Ask whether AI-assisted coding is part of the approved developer experience — Cursor may fit as a governed productivity layer.",
+  );
+  pushAgg(
+    "AI HIRING SIGNALS",
+    byGroup("ai"),
+    `AI-related hiring language may indicate build or evaluation work around generative AI / ML — not proof that an AI coding tool is already approved.`,
+    "INFERENCE",
+    "SALES HYPOTHESIS: If they are hiring for AI build work, ask whether engineering has an approved AI coding path for day-to-day software delivery.",
+  );
+  pushAgg(
+    "HIRING SIGNALS",
+    byGroup("language").length > 0 ? byGroup("language") : frequencies.slice(0, 3),
+    total >= 4
+      ? `Multiple technical hiring sources (${total}) may indicate sustained software delivery demand.`
+      : `Limited technical hiring sources were found; treat as a weak signal until careers pages are confirmed.`,
+    total >= 4 ? "INFERENCE" : "SALES_HYPOTHESIS",
+    "SALES HYPOTHESIS: Active engineering hiring can signal delivery pressure — open with developer productivity and whether capacity is keeping up with digital demand.",
+  );
+
+  // Keep a few concrete posting-level signals after aggregates.
+  for (const item of hiringItems.slice(0, 3)) {
+    const itemTech = detectTech([item]);
+    const skillsAndTasks = extractSkillsAndTasks(item);
+    signals.push({
+      signal: item.title,
+      supportingJobPostings: [item.title],
+      supportingJobCount: 1,
+      technologiesDetected: itemTech,
+      skillsAndTasks,
+      evidence: item.snippet || item.title,
+      sourceUrls: [item.url],
+      businessImplication:
+        skillsAndTasks.length > 0
+          ? `Mentions ${skillsAndTasks.slice(0, 3).join("; ")} — may indicate active delivery or platform work.`
+          : itemTech.length > 0
+            ? `Mentions ${itemTech.slice(0, 3).join(", ")} — may indicate active delivery or platform work.`
+            : "May indicate active delivery or platform work — not proof of a tooling gap.",
+      cursorRelevance: cursorRelevanceForItem(item, skillsAndTasks),
+      confidence: "Medium",
+      claimType: "INFERENCE",
+    });
+  }
+
+  return signals.slice(0, 9);
 }
 
 type ExtractedLeader = {
@@ -404,24 +578,53 @@ function detectFinancialSignals(items: LiveResearchItem[]) {
   const signals: string[] = [];
   const text = combinedText(items).toLowerCase();
 
-  if (text.includes("form 990") || text.includes("form990")) {
-    signals.push("Form 990 / nonprofit filing signals found in public sources");
-  }
-  if (text.includes("bond")) {
-    signals.push("Bond / credit disclosure activity appears in public sources");
-  }
-  if (text.includes("capital") || text.includes("investment")) {
-    signals.push("Capital investment or funding language appears in public sources");
-  }
-  if (text.includes("revenue") || text.includes("operating income")) {
-    signals.push("Revenue / operating income language appears in public sources");
+  const checks: { keywords: string[]; label: string }[] = [
+    {
+      keywords: ["form 990", "form990"],
+      label: "Form 990 / nonprofit filing signals found in public sources",
+    },
+    {
+      keywords: ["bond offering", "bond disclosure", "bond rating", " bond"],
+      label: "Bond / credit disclosure activity appears in public sources",
+    },
+    {
+      keywords: ["capital plan", "capital spending", "capital investment"],
+      label: "Capital plan / spending language appears in public sources",
+    },
+    {
+      keywords: ["technology investment", "digital investment", "ai investment"],
+      label: "Technology / digital investment language appears in public sources",
+    },
+    {
+      keywords: ["operating margin", "cost pressure", "productivity"],
+      label: "Operating margin / cost / productivity pressure language appears in public sources",
+    },
+    {
+      keywords: ["cybersecurity investment", "security investment"],
+      label: "Cybersecurity investment language appears in public sources",
+    },
+    {
+      keywords: ["acquisition", "merger"],
+      label: "M&A / acquisition language appears in public financial or public docs",
+    },
+    {
+      keywords: ["revenue", "operating income", "audited financial"],
+      label: "Revenue / audited financial language appears in public sources",
+    },
+  ];
+
+  for (const check of checks) {
+    if (check.keywords.some((keyword) => text.includes(keyword))) {
+      signals.push(check.label);
+    }
   }
 
   for (const item of items.slice(0, 3)) {
-    signals.push(`Financial source: ${item.title}`);
+    const date = item.publishedDate ? ` (${item.publishedDate})` : "";
+    signals.push(`Financial/public source${date}: ${item.title} — ${item.url}`);
   }
 
-  return [...new Set(signals)].slice(0, 5);
+  return [...new Set(signals)].slice(0, 8);
 }
 
 function uniqueBullets(items: string[], limit = 6) {
@@ -713,6 +916,10 @@ function buildAccountSnapshot(
   };
 }
 
+function hasEpicOrEhrTech(techs: string[]) {
+  return techs.some((tech) => /epic|cerner|oracle health/i.test(tech));
+}
+
 /**
  * Builds dossier content from organized live research without OpenAI.
  * Keeps claims conservative and source-backed.
@@ -731,15 +938,19 @@ export function localAnalyzeAccountResearch(
   const company = liveResearch.companyName;
   const { organized } = liveResearch;
   const initiativeItems = topItems(organized.initiatives, 5);
-  const techItems = topItems([...organized.ai, ...organized.technology], 5);
-  const hiringItems = topItems(organized.hiring, 6);
+  const techItems = topItems([...organized.ai, ...organized.technology], 6);
+  const hiringItems = topItems(organized.hiring, 10);
   const leadershipItems = topItems(organized.leadership, 5);
-  const financialItems = topItems(organized.financial, 4);
-  const techDetected = detectTech([
+  const financialItems = topItems(organized.financial, 5);
+  const newsItems = topItems(organized.news || [], 5);
+  const complianceItems = topItems(organized.compliance || [], 4);
+  const techEvidence = detectTechWithEvidence([
     ...organized.ai,
     ...organized.technology,
     ...organized.hiring,
   ]);
+  const techDetected = techEvidence.map((item) => item.technology);
+  const hiringFrequencies = countHiringTechFrequency(organized.hiring);
   const extractedLeaders = extractLeaders([
     ...organized.leadership,
     ...liveResearch.items,
@@ -750,23 +961,23 @@ export function localAnalyzeAccountResearch(
   const whatsHappening = uniqueBullets(
     [
       ...initiativeItems.map((item) => bulletFromItem(item, company)),
+      ...newsItems.slice(0, 2).map((item) => bulletFromItem(item, company)),
       ...financialItems.slice(0, 1).map((item) => bulletFromItem(item, company)),
     ],
-    6,
+    7,
   );
 
   const techAndAI = uniqueBullets(
     [
-      ...techItems.map((item) => bulletFromItem(item, company)),
-      ...(techDetected.length > 0
-        ? [
-            `Technologies mentioned in public sources: ${techDetected
-              .slice(0, 8)
-              .join(", ")}.`,
-          ]
-        : []),
+      ...techEvidence.slice(0, 6).map(
+        (item) =>
+          `${item.technology} (${item.mentionCount} source${item.mentionCount === 1 ? "" : "s"}): ${item.evidence} — Source: ${item.sourceTitle} (${item.sourceUrl})`,
+      ),
+      ...techItems
+        .slice(0, 3)
+        .map((item) => bulletFromItem(item, company)),
     ],
-    6,
+    8,
   );
 
   const opportunitySignals = uniqueBullets(
@@ -799,11 +1010,17 @@ export function localAnalyzeAccountResearch(
 
   const whyNow = uniqueBullets(
     [
-      ...initiativeItems
-        .slice(0, 3)
+      ...newsItems
+        .slice(0, 2)
         .map(
           (item) =>
-            `Public initiative/news: ${formatHeadline(item.title, { companyName: company })}`,
+            `Recent trigger: ${formatHeadline(item.title, { companyName: company })}`,
+        ),
+      ...initiativeItems
+        .slice(0, 2)
+        .map(
+          (item) =>
+            `Public initiative: ${formatHeadline(item.title, { companyName: company })}`,
         ),
       ...hiringItems
         .slice(0, 2)
@@ -812,10 +1029,16 @@ export function localAnalyzeAccountResearch(
             `Hiring activity: ${formatHeadline(item.title, { companyName: company })}`,
         ),
       ...techItems
-        .slice(0, 2)
+        .slice(0, 1)
         .map(
           (item) =>
             `Technology/AI activity: ${formatHeadline(item.title, { companyName: company })}`,
+        ),
+      ...complianceItems
+        .slice(0, 1)
+        .map(
+          (item) =>
+            `Compliance/security context: ${formatHeadline(item.title, { companyName: company })}`,
         ),
       ...financialItems
         .slice(0, 1)
@@ -824,24 +1047,36 @@ export function localAnalyzeAccountResearch(
             `Financial/public signal: ${formatHeadline(item.title, { companyName: company })}`,
         ),
     ],
-    6,
+    8,
   );
 
+  const topHiringFreq = hiringFrequencies.slice(0, 4);
   const whyCursor = uniqueBullets(
     [
-      `${company} shows public digital/technology activity that may increase software delivery demand — validate with the customer.`,
-      hiringItems.length > 0
-        ? `Technical hiring signals (${hiringItems.length} live sources) suggest active build or platform work where developer productivity tools may be relevant.`
-        : "If engineering delivery capacity is constrained, AI-assisted development may be worth exploring.",
-      techDetected.length > 0
-        ? `Public sources mention ${techDetected.slice(0, 5).join(", ")} — useful context for discovery on stack and delivery bottlenecks.`
+      initiativeItems[0]
+        ? `WHY CURSOR MAY BE RELEVANT (from evidence): public initiative "${formatHeadline(initiativeItems[0].title, { companyName: company })}" may increase software delivery demand — validate with the customer.`
+        : `${company} shows public digital/technology activity that may increase software delivery demand — validate with the customer.`,
+      topHiringFreq.length > 0
+        ? `Hiring pattern evidence: ${topHiringFreq.map((item) => `${item.count} sources mention ${item.label}`).join("; ")}. SALES HYPOTHESIS: those stacks are where governed AI coding assistance may help — not a confirmed tooling gap.`
+        : hiringItems.length > 0
+          ? `Technical hiring signals (${organized.hiring.length} live sources) suggest active build or platform work where developer productivity tools may be relevant.`
+          : "If engineering delivery capacity is constrained, AI-assisted development may be worth exploring.",
+      techEvidence[0]
+        ? `Technology evidence: ${techEvidence
+            .slice(0, 4)
+            .map((item) => item.technology)
+            .join(", ")} appear in sourced public materials — use for discovery on where custom development concentrates.`
         : "Confirm technology stack and where custom software work is concentrated.",
       organized.ai.length > 0
-        ? "AI-related public activity creates a natural opening to discuss governed AI coding tools for builders."
-        : "Even without public AI initiatives, regulated healthcare teams often need an approved developer AI path.",
-      "Healthcare environments usually require governed tooling — frame any pilot around security, privacy, and team standards.",
+        ? "AI-related public activity creates a natural opening to discuss governed AI coding tools for builders (sales hypothesis — confirm approval status)."
+        : complianceItems.length > 0
+          ? "Compliance/security research context supports asking about an approved developer AI path rather than unmanaged tools."
+          : "Even without public AI initiatives, regulated teams often need an approved developer AI path.",
+      extractedLeaders[0]
+        ? `Buying-committee evidence: ${extractedLeaders[0].name} (${extractedLeaders[0].title}) appears in public leadership materials — confirm before outreach.`
+        : "Confirm technology buying committee names from first-party leadership pages before outreach.",
     ],
-    5,
+    6,
   );
 
   const talkTrack = [
@@ -878,6 +1113,19 @@ export function localAnalyzeAccountResearch(
         ];
 
   const cursorSellingAngles = buildCursorHiringAngles(organized.hiring);
+  const aggregatedHiringSignals = buildAggregatedHiringSignals(
+    company,
+    organized.hiring,
+    hiringFrequencies,
+  );
+
+  const freqSummary =
+    hiringFrequencies.length > 0
+      ? ` Technology frequency across hiring sources: ${hiringFrequencies
+          .slice(0, 6)
+          .map((item) => `${item.count}× ${item.label}`)
+          .join(", ")}.`
+      : "";
 
   const jobIntelligence: ExperimentalIntelligence["jobIntelligence"] = {
     isSample: false,
@@ -885,35 +1133,10 @@ export function localAnalyzeAccountResearch(
     categories: jobCategories,
     technologiesDetected: techDetected,
     cursorSellingAngles,
-    signals: hiringItems.slice(0, 4).map((item) => {
-      const itemTech = detectTech([item]);
-      const skillsAndTasks = extractSkillsAndTasks(item);
-      return {
-        signal: item.title,
-        supportingJobPostings: [item.title],
-        supportingJobCount: 1,
-        technologiesDetected: itemTech,
-        skillsAndTasks,
-        evidence: item.snippet || item.title,
-        sourceUrls: [item.url],
-        businessImplication:
-          skillsAndTasks.length > 0
-            ? `Mentions ${skillsAndTasks.slice(0, 3).join("; ")} — may indicate active delivery or platform work.`
-            : itemTech.length > 0
-              ? `Mentions ${itemTech.slice(0, 3).join(", ")} — may indicate active delivery or platform work.`
-              : "May indicate active delivery or platform work — not proof of a tooling gap.",
-        cursorRelevance: cursorRelevanceForItem(item, skillsAndTasks),
-        confidence: "Medium" as const,
-        claimType: "INFERENCE" as const,
-      };
-    }),
+    signals: aggregatedHiringSignals,
     summary:
       organized.hiring.length > 0
-        ? `Found ${organized.hiring.length} live hiring-related sources for ${company}. ${
-            cursorSellingAngles.length > 0
-              ? `${cursorSellingAngles.length} Cursor-relevant skill/technology angles were extracted from titles and snippets.`
-              : "Category counts are keyword matches from public research, not a full job board scrape."
-          }`
+        ? `Found ${organized.hiring.length} live hiring-related sources for ${company}.${freqSummary} Aggregated HIRING / CLOUD / AI / DEVELOPER TOOL signals below are keyword matches across public listings — not a complete job-board census. Conclusions are labeled INFERENCE or SALES HYPOTHESIS.`
         : `No strong hiring sources were organized yet for ${company}.`,
   };
 
@@ -1071,9 +1294,62 @@ export function localAnalyzeAccountResearch(
     isSample: false,
   });
 
+  const primaryHypothesis = [
+    initiativeItems[0]
+      ? `PRIMARY SALES HYPOTHESIS: ${company}'s public initiative "${formatHeadline(initiativeItems[0].title, { companyName: company })}" may be creating software delivery pressure`
+      : `PRIMARY SALES HYPOTHESIS: ${company} may have digital/technology delivery pressure based on public research`,
+    topHiringFreq[0]
+      ? ` — supported by hiring mentions of ${topHiringFreq
+          .slice(0, 3)
+          .map((item) => item.label)
+          .join(", ")}`
+      : "",
+    techEvidence[0]
+      ? ` and technology evidence for ${techEvidence
+          .slice(0, 3)
+          .map((item) => item.technology)
+          .join(", ")}`
+      : "",
+    ". This is a possible opportunity, not a confirmed customer problem.",
+  ].join("");
+
+  const secondaryHypotheses = uniqueBullets(
+    [
+      organized.ai.length > 0
+        ? "SECONDARY: AI-related public activity may create openness to governed AI coding tools for builders — confirm approval status."
+        : "",
+      hasEpicOrEhrTech(techDetected)
+        ? "SECONDARY: Epic/EHR-adjacent signals may imply complex integration work where AI-assisted coding could help — validate with engineering."
+        : "",
+      financialSignals.some((signal) => /cost|margin|productivity/i.test(signal))
+        ? "SECONDARY: Financial/public language about cost or productivity may support a ROI conversation — do not invent figures."
+        : "",
+      complianceItems.length > 0
+        ? "SECONDARY: Compliance/security research context may support asking about shadow AI and approved developer tooling — not a claim of regulatory obligation."
+        : "",
+    ].filter(Boolean),
+    3,
+  );
+
   const whyNowSynthesis: ExperimentalIntelligence["whyNowSynthesis"] =
     mergeWhyNowSignals(
       [
+        ...newsItems.slice(0, 2).map((item) => ({
+          trigger: item.title,
+          date: item.publishedDate || "Last 12–18 months (from live research)",
+          evidence: item.snippet || item.title,
+          source: item.title,
+          sourceUrl: item.url,
+          relevantPersona: "CIO / CISO / digital leadership",
+          whyItMatters:
+            "Recent public triggers can create outreach timing if they affect technology delivery or leadership priorities.",
+          cursorRelevance:
+            "Use only if the trigger implies software delivery, AI, security tooling, or modernization — validate with the customer.",
+          discoveryQuestion: `How is "${formatHeadline(item.title, { companyName: company })}" changing technology priorities or delivery expectations?`,
+          confidence: "Medium" as const,
+          claimType: "FACT" as const,
+          combinedSignals: [RESEARCH_CATEGORY_LABELS.news],
+        })),
         ...initiativeItems.slice(0, 2).map((item) => ({
           trigger: item.title,
           date: item.publishedDate || "Recent (from live research)",
@@ -1090,6 +1366,36 @@ export function localAnalyzeAccountResearch(
           claimType: "FACT" as const,
           combinedSignals: [RESEARCH_CATEGORY_LABELS.initiatives],
         })),
+        ...(hiringFrequencies[0]
+          ? [
+              {
+                trigger: `Hiring pattern: ${hiringFrequencies
+                  .slice(0, 4)
+                  .map((item) => `${item.count}× ${item.label}`)
+                  .join(", ")}`,
+                date: "Recent (from live hiring research)",
+                evidence: hiringFrequencies
+                  .slice(0, 4)
+                  .map(
+                    (item) =>
+                      `${item.count} hiring sources mention ${item.label}`,
+                  )
+                  .join("; "),
+                source: "Aggregated hiring research",
+                sourceUrl: hiringFrequencies[0].sourceUrls[0] || "",
+                relevantPersona: "VP Engineering / Platform",
+                whyItMatters:
+                  "INFERENCE: repeated tech mentions across openings can show where build work is concentrated.",
+                cursorRelevance:
+                  "SALES HYPOTHESIS: position Cursor against the highest-frequency languages/platforms found — not a confirmed tooling gap.",
+                discoveryQuestion:
+                  "Which engineering stacks are creating the most delivery pressure right now?",
+                confidence: "Medium" as const,
+                claimType: "INFERENCE" as const,
+                combinedSignals: [RESEARCH_CATEGORY_LABELS.hiring],
+              },
+            ]
+          : []),
         ...(hiringItems[0] && techItems[0]
           ? [
               {
@@ -1116,7 +1422,7 @@ export function localAnalyzeAccountResearch(
           : []),
         ...regulatoryTriggersToWhyNowSignals(complianceSecurity.whyNowTriggers),
       ],
-      6,
+      8,
     );
 
   const researchGaps: ExperimentalIntelligence["researchGaps"] = [
@@ -1132,7 +1438,9 @@ export function localAnalyzeAccountResearch(
     {
       whatWeDontKnow: "Existing AI coding tools already approved or in use",
       currentEvidence:
-        organized.ai[0]?.title || "AI-related public sources found, tool stack unknown.",
+        techEvidence.find((item) => item.group === "ai")?.evidence ||
+        organized.ai[0]?.title ||
+        "AI-related public sources found, tool stack unknown.",
       whyItMatters: "Determines displacement vs complementary positioning.",
       whoToAsk: "VP Engineering / Platform / DevEx",
       discoveryQuestion: "Which AI coding tools are approved, piloted, or blocked today?",
@@ -1145,62 +1453,117 @@ export function localAnalyzeAccountResearch(
       whoToAsk: "CIO chief of staff / procurement",
       discoveryQuestion: "Who owns evaluation and budget for developer productivity tools?",
     },
+    {
+      whatWeDontKnow: "Named VP Engineering / Platform / DevOps owners",
+      currentEvidence:
+        extractedLeaders.find((leader) =>
+          /engineer|platform|devops|architect/i.test(leader.title),
+        )?.name ||
+        "No clearly named engineering VP extracted from live sources.",
+      whyItMatters: "Technical champion identity is required for a real pilot path.",
+      whoToAsk: "CIO chief of staff / HR leadership page",
+      discoveryQuestion: "Who owns engineering productivity and developer experience?",
+    },
+    {
+      whatWeDontKnow: "Primary-source Form 990 / bond / capital plan detail",
+      currentEvidence:
+        financialItems[0]?.title ||
+        "Financial/public research ran, but deeper filing text may require direct document retrieval.",
+      whyItMatters: "Technology investment and margin pressure claims need document-level evidence.",
+      whoToAsk: "Finance partner / public filings",
+      discoveryQuestion:
+        "Where are digital, AI, or cybersecurity investments prioritized in the capital or operating plan?",
+    },
   ];
+
+  const outreachAngle1 = initiativeItems[0]
+    ? `Initiative angle: reference "${formatHeadline(initiativeItems[0].title, { companyName: company })}" and ask where software delivery is constrained.`
+    : `Digital delivery angle: ask where ${company} feels the most pressure to ship software faster.`;
+  const outreachAngle2 = topHiringFreq[0]
+    ? `Hiring angle: public listings mention ${topHiringFreq
+        .slice(0, 3)
+        .map((item) => item.label)
+        .join(", ")} — ask how those teams handle productivity and AI coding tool approval.`
+    : "Hiring angle: confirm active engineering hiring and ask about developer onboarding velocity.";
+  const outreachAngle3 = complianceItems[0] || techEvidence.some((item) => item.group === "ai")
+    ? "Governance angle: ask how security/compliance reviews AI coding tools and whether an approved path exists for builders."
+    : "Governance angle: ask what controls would be required before an enterprise AI coding pilot.";
 
   const prospectingPlan: ExperimentalIntelligence["prospectingPlan"] = {
     isSample: false,
     whoToTarget: [
       {
-        persona: "CIO / technology executive (confirm)",
+        persona: extractedLeaders[0]
+          ? `${extractedLeaders[0].name} — ${extractedLeaders[0].title}`
+          : "CIO / technology executive (confirm)",
         whyThem: "Likely sponsor for enterprise developer tooling.",
         talkAbout: "Digital delivery capacity and governed AI adoption.",
-        relatedSignal: leadershipItems[0]?.title || initiativeItems[0]?.title || "Live research",
+        relatedSignal:
+          leadershipItems[0]?.title || initiativeItems[0]?.title || "Live research",
       },
       {
         persona: "VP / Director Engineering (confirm)",
         whyThem: "Best technical champion for a pilot.",
-        talkAbout: "Where teams lose time and how AI coding tools could help.",
+        talkAbout: topHiringFreq[0]
+          ? `Where ${topHiringFreq[0].label} and related stacks create delivery pressure.`
+          : "Where teams lose time and how AI coding tools could help.",
         relatedSignal: hiringItems[0]?.title || techItems[0]?.title || "Live research",
+      },
+      {
+        persona: "CISO / security governance (confirm)",
+        whyThem: "Often gates AI developer tooling in regulated environments.",
+        talkAbout: "Approved AI coding path, shadow AI, and third-party risk.",
+        relatedSignal:
+          complianceItems[0]?.title || newsItems[0]?.title || "Compliance research",
       },
     ],
     conversationAngles: [
-      `${company} shows public initiative/digital activity that may increase software delivery demand.`,
-      hiringItems.length > 0
-        ? "Hiring-related public signals suggest active technology delivery work."
-        : "Technology/AI public signals suggest active modernization or digital work.",
-      "Healthcare governance requirements make an approved AI coding path a useful conversation.",
+      outreachAngle1,
+      outreachAngle2,
+      outreachAngle3,
+      primaryHypothesis,
+      ...secondaryHypotheses,
     ],
     strongestWhyNow:
       whyNow[0] ||
       `Public research indicates active technology/digital discussion at ${company}. Validate urgency with the customer.`,
     discoveryQuestions: [
       `Where is ${company} feeling the most pressure to deliver software faster this year?`,
-      "Which teams own internal AI or digital product development today?",
-      "What AI coding tools are already approved or under evaluation?",
-      "Who owns budget for developer productivity platforms?",
-      "What would a successful 30-day pilot need to prove?",
+      topHiringFreq[0]
+        ? `Public hiring mentions ${topHiringFreq
+            .slice(0, 3)
+            .map((item) => item.label)
+            .join(", ")} — which of those stacks create the most delivery bottleneck?`
+        : "Which teams own internal AI or digital product development today?",
+      "What AI coding tools are already approved, piloted, or blocked today?",
+      "Who owns budget and security review for developer productivity platforms?",
+      "What would a successful 30-day governed pilot need to prove for engineering and security?",
     ],
     stillNeedToDiscover: [
       "Developer population",
       "Current AI coding stack",
       "Confirmed buying committee names",
       "Budget owner",
+      "Primary financial filing detail (990/bonds/capital)",
+      ...(extractedLeaders.length === 0
+        ? ["Named technology executives from first-party pages"]
+        : []),
     ],
     outreach: {
       email: `Subject: ${company} digital delivery capacity
 
 Hi {{FirstName}},
 
-I've been reviewing public materials around ${company}'s technology and digital priorities${initiativeItems[0] ? `, including ${initiativeItems[0].title}` : ""}.
+I've been reviewing public materials around ${company}'s technology and digital priorities${initiativeItems[0] ? `, including ${formatHeadline(initiativeItems[0].title, { companyName: company })}` : ""}${topHiringFreq[0] ? `. Hiring-related sources also mention ${topHiringFreq.slice(0, 2).map((item) => item.label).join(" and ")}` : ""}.
 
-I'd value 20 minutes to learn how your engineering teams are balancing delivery speed with quality — and whether governed AI-assisted development is on your radar.
+I'd value 20 minutes to learn how your engineering teams are balancing delivery speed with quality — and whether a governed AI-assisted development path is on your radar.
 
 Would next week work for a brief conversation?
 
 Best,
 {{YourName}}`,
-      coldCallOpener: `Hi {{FirstName}}, this is {{YourName}}. I'm calling because ${company} appears to have active public digital/technology work, and I help engineering leaders evaluate governed AI coding tools. Is now a bad time for 30 seconds?`,
-      linkedInMessage: `Hi {{FirstName}} — following ${company}'s public technology/digital priorities. Curious how your teams are approaching developer productivity as that work scales. Open to a short conversation?`,
+      coldCallOpener: `Hi {{FirstName}}, this is {{YourName}}. I'm calling because ${company} has public digital/technology signals${initiativeItems[0] ? ` around ${formatHeadline(initiativeItems[0].title, { companyName: company })}` : ""}, and I help engineering leaders evaluate governed AI coding tools. Is now a bad time for 30 seconds?`,
+      linkedInMessage: `Hi {{FirstName}} — following ${company}'s public technology/digital priorities${topHiringFreq[0] ? ` and hiring signals around ${topHiringFreq[0].label}` : ""}. Curious how your teams are approaching developer productivity as that work scales. Open to a short conversation?`,
     },
   };
 

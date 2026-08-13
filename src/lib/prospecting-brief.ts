@@ -87,14 +87,33 @@ function detectTechMentions(items: LiveResearchItem[]) {
     "Epic",
     "AWS",
     "Azure",
+    "GCP",
     "Google Cloud",
     "Snowflake",
     "Databricks",
     "Kubernetes",
+    "Docker",
+    "Terraform",
+    "GitHub",
+    "GitLab",
+    "VS Code",
+    "Python",
+    "Java",
+    "TypeScript",
+    ".NET",
+    "Copilot",
+    "Claude",
+    "Generative AI",
     "Salesforce",
   ];
   const text = items.map((i) => `${i.title} ${i.snippet}`).join(" ").toLowerCase();
-  return catalog.filter((tech) => text.includes(tech.toLowerCase()));
+  return catalog.filter((tech) => {
+    const needle = tech.toLowerCase();
+    if (needle === "java") {
+      return /\bjava\b/.test(text);
+    }
+    return text.includes(needle);
+  });
 }
 
 /**
@@ -111,6 +130,8 @@ export function buildProspectingBrief(
   const tech = pickBest([...organized.ai, ...organized.technology], 3);
   const leadership = pickBest(organized.leadership, 2);
   const financial = pickBest(organized.financial, 2);
+  const news = pickBest(organized.news || [], 2);
+  const compliance = pickBest(organized.compliance || [], 2);
   const techMentions = detectTechMentions([
     ...organized.technology,
     ...organized.ai,
@@ -118,6 +139,21 @@ export function buildProspectingBrief(
   ]);
 
   const prioritySignals: SourcedSignal[] = [];
+
+  for (const item of news.slice(0, 1)) {
+    prioritySignals.push({
+      headline: cleanHeadline(item, company),
+      insight: formatDisplayText(
+        `MEDDPICC Identify Pain: recent public trigger — use only if it implies delivery, AI, security, or modernization pressure. Confirm with the customer before treating as urgency.`,
+        { companyName: company },
+      ),
+      meddpicc: "Identify Pain",
+      command: "Buyer Pain",
+      persona: "CIO / digital leadership",
+      claimType: "FACT",
+      sources: [sourceFrom(item, company)],
+    });
+  }
 
   for (const item of initiatives.slice(0, 2)) {
     prioritySignals.push({
@@ -193,7 +229,7 @@ export function buildProspectingBrief(
     prioritySignals.push({
       headline: cleanHeadline(financial[0], company),
       insight: formatDisplayText(
-        `Financial/public disclosure context helps you ask better MEDDPICC Metrics questions — where capital and digital investment may justify a productivity tool evaluation.`,
+        `Financial/public disclosure context helps you ask better MEDDPICC Metrics questions — where capital and digital investment may justify a productivity tool evaluation. Do not invent figures.`,
         { companyName: company },
       ),
       meddpicc: "Metrics",
@@ -204,16 +240,37 @@ export function buildProspectingBrief(
     });
   }
 
+  if (compliance[0]) {
+    prioritySignals.push({
+      headline: cleanHeadline(compliance[0], company),
+      insight: formatDisplayText(
+        `Compliance/security context is Decision Criteria / Paper Process material — ask how AI coding tools are approved. Do not treat voluntary guidance as law.`,
+        { companyName: company },
+      ),
+      meddpicc: "Decision Criteria",
+      command: "Required Capability",
+      persona: "CISO / compliance",
+      claimType: "INFERENCE",
+      sources: [sourceFrom(compliance[0], company)],
+    });
+  }
+
   const whyCursorNow: SourcedSignal[] = [];
 
   if (initiatives[0] || hiring[0]) {
+    const stackNote =
+      techMentions.length > 0
+        ? ` Evidence mentions ${techMentions.slice(0, 4).join(", ")}.`
+        : "";
     whyCursorNow.push({
       headline: formatHeadline(
-        `${company} appears to have active digital or technical delivery work`,
+        initiatives[0]
+          ? `Why Cursor may be relevant: ${cleanHeadline(initiatives[0], company)}`
+          : `${company} shows active technical hiring / delivery signals`,
         { companyName: company },
       ),
       insight: formatDisplayText(
-        `Command of the Message: lead with the Value Driver of faster, higher-quality software delivery under governance. Cursor helps engineering teams ship initiative work without shadow-IT AI tools.`,
+        `SALES HYPOTHESIS from account evidence: public initiative/hiring activity may create software delivery pressure.${stackNote} Lead with discovery on capacity — not a generic Cursor pitch.`,
         { companyName: company },
       ),
       meddpicc: "Identify Pain",
@@ -229,11 +286,11 @@ export function buildProspectingBrief(
   if (techMentions.includes("Epic") || tech.some((t) => /epic|ehr/i.test(t.title))) {
     whyCursorNow.push({
       headline: formatHeadline(
-        "Complex healthcare systems work often means heavy integration and customization",
+        "Epic/EHR-adjacent evidence may imply complex integration and customization work",
         { companyName: company },
       ),
       insight: formatDisplayText(
-        `Command Differentiator: Cursor accelerates work in large, existing codebases and integration-heavy environments — common around EHR-adjacent platforms — while Teams controls support regulated Decision Criteria.`,
+        `SALES HYPOTHESIS: Cursor may help in large existing codebases and integration-heavy environments if those teams exist — confirm with engineering. Do not invent Epic projects.`,
         { companyName: company },
       ),
       meddpicc: "Decision Criteria",
@@ -244,34 +301,46 @@ export function buildProspectingBrief(
     });
   }
 
-  whyCursorNow.push({
-    headline: formatHeadline(
-      "Healthcare buyers usually need a governed AI coding path",
-      { companyName: company },
-    ),
-    insight: formatDisplayText(
-      `MEDDPICC Paper Process / Decision Criteria: position Cursor Teams (SSO, privacy controls, team standards) as the approved alternative to unmanaged consumer AI coding tools.`,
-      { companyName: company },
-    ),
-    meddpicc: "Paper Process",
-    command: "Differentiator",
-    persona: "Security / governance + CIO",
-    claimType: "SALES_HYPOTHESIS",
-    sources: tech[0]
-      ? [sourceFrom(tech[0], company)]
-      : initiatives[0]
-        ? [sourceFrom(initiatives[0], company)]
-        : [],
-  });
+  if (compliance[0] || techMentions.some((t) => /copilot|claude|generative ai/i.test(t))) {
+    whyCursorNow.push({
+      headline: formatHeadline(
+        "Evidence supports asking about a governed AI coding path",
+        { companyName: company },
+      ),
+      insight: formatDisplayText(
+        `Account-specific SALES HYPOTHESIS: compliance/AI signals create a reason to ask about approved vs unmanaged AI coding tools. REQUIRES PRODUCT VALIDATION for any specific Cursor control claims.`,
+        { companyName: company },
+      ),
+      meddpicc: "Paper Process",
+      command: "Differentiator",
+      persona: "Security / governance + CIO",
+      claimType: "SALES_HYPOTHESIS",
+      sources: (compliance[0] ? [compliance[0]] : tech[0] ? [tech[0]] : initiatives[0] ? [initiatives[0]] : []).map(
+        (item) => sourceFrom(item, company),
+      ),
+    });
+  }
 
   const valueThesis = formatDisplayText(
-    `${company} shows public digital, technology, or hiring activity that can create pressure to deliver software faster. Use MEDDPICC to find pain and the Economic Buyer, and use Command of the Message to sell Cursor as the governed way for engineering teams to increase delivery capacity.`,
+    [
+      `${company}:`,
+      initiatives[0]
+        ? `initiative evidence around "${cleanHeadline(initiatives[0], company)}"`
+        : "public digital/technology research",
+      techMentions.length > 0
+        ? `; stack mentions include ${techMentions.slice(0, 5).join(", ")}`
+        : "",
+      hiring[0] ? `; hiring signals present` : "",
+      `. PRIMARY SALES HYPOTHESIS: delivery pressure may create openness to a governed AI coding tool — validate; do not treat as confirmed.`,
+    ].join(""),
     { companyName: company },
   );
 
   const discoveryQuestions = [
     `Where is ${company} feeling the most pressure to deliver software or digital products faster this year?`,
-    "Who is the Economic Buyer for developer productivity or AI coding tools?",
+    techMentions[0]
+      ? `Public sources mention ${techMentions.slice(0, 3).join(", ")} — which of those create the biggest engineering bottleneck?`
+      : "Who is the Economic Buyer for developer productivity or AI coding tools?",
     "Which Champion would run a governed pilot — platform, digital, or application engineering?",
     "What Decision Criteria matter most: security, privacy mode, SSO, auditability, or IDE workflow fit?",
     "How do you prevent shadow-IT AI coding tools while still giving developers modern assistance?",

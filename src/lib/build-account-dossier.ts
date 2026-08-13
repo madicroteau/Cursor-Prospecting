@@ -37,7 +37,8 @@ function normalizeWebsiteForCache(website: string, companyName: string) {
 }
 
 function cacheKey(companyName: string, companyWebsite: string) {
-  return `${companyName.trim().toLowerCase()}|${normalizeWebsiteForCache(
+  // v3: multi-pass research + deeper local synthesis
+  return `v3|${companyName.trim().toLowerCase()}|${normalizeWebsiteForCache(
     companyWebsite,
     companyName,
   ).toLowerCase()}`;
